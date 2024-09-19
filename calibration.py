@@ -75,7 +75,6 @@ if __name__ == '__main__':
         visualize = True
     else:
         visualize = False
-
     ret, mtx, dist, rvecs, tvecs = calibrate(dirpath, square_size, visualize=visualize, width=width, height=height)
 
     print(mtx)
