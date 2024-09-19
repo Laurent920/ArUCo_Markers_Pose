@@ -53,9 +53,10 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
 if __name__ == '__main__':
 
     ap = argparse.ArgumentParser()
-    ap.add_argument("-k", "--K_Matrix", required=True, help="Path to calibration matrix (numpy file)")
-    ap.add_argument("-d", "--D_Coeff", required=True, help="Path to distortion coefficients (numpy file)")
+    ap.add_argument("-k", "--K_Matrix", default="calibration_matrix.npy", help="Path to calibration matrix (numpy file)")
+    ap.add_argument("-d", "--D_Coeff", default="distortion_coefficients.npy", help="Path to distortion coefficients (numpy file)")
     ap.add_argument("-t", "--type", type=str, default="DICT_ARUCO_ORIGINAL", help="Type of ArUCo tag to detect")
+    ap.add_argument("-v", "--video", type=str, default=0, help="Path to video (.mp4 file)")
     args = vars(ap.parse_args())
 
     if ARUCO_DICT.get(args["type"], None) is None:
@@ -69,7 +70,7 @@ if __name__ == '__main__':
     k = np.load(calibration_matrix_path)
     d = np.load(distortion_coefficients_path)
 
-    video = cv2.VideoCapture(0)
+    video = cv2.VideoCapture(args["video"])
     time.sleep(2.0)
 
     while True:
