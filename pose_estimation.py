@@ -43,9 +43,16 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
             if ret:
                 # Draw a square around the markers
                 cv2.aruco.drawDetectedMarkers(frame, corners)
-
                 # Draw axis
                 cv2.drawFrameAxes(frame, matrix_coefficients, distortion_coefficients, rvec, tvec, 0.05)
+
+                print(type(tvec))
+                print((tvec[0]))
+                x, y, z = tvec.flatten()
+
+                cv2.putText(frame, f'x: {x:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+                cv2.putText(frame, f'y: {y:.2f}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+                cv2.putText(frame, f'z: {z:.2f}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
 
     return frame
 
@@ -55,7 +62,7 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument("-k", "--K_Matrix", default="calibration_matrix.npy", help="Path to calibration matrix (numpy file)")
     ap.add_argument("-d", "--D_Coeff", default="distortion_coefficients.npy", help="Path to distortion coefficients (numpy file)")
-    ap.add_argument("-t", "--type", type=str, default="DICT_ARUCO_ORIGINAL", help="Type of ArUCo tag to detect")
+    ap.add_argument("-t", "--type", type=str, default="DICT_4X4_50", help="Type of ArUCo tag to detect")
     ap.add_argument("-v", "--video", type=str, default=0, help="Path to video (.mp4 file)")
     args = vars(ap.parse_args())
 
