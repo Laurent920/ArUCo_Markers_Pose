@@ -9,6 +9,8 @@ import sys
 from utils import ARUCO_DICT
 import argparse
 import time
+import os
+import ffmpeg
 
 
 def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coefficients):
@@ -43,10 +45,10 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
             if ret:
                 # Draw a square around the markers
                 cv2.aruco.drawDetectedMarkers(frame, corners)
+
                 # Draw axis
                 cv2.drawFrameAxes(frame, matrix_coefficients, distortion_coefficients, rvec, tvec, 0.05)
 
-                print(type(tvec))
                 print((tvec[0]))
                 x, y, z = tvec.flatten()
 
@@ -56,6 +58,13 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
 
     return frame
 
+def convert_to_mp4(mkv_file):
+    name, ext = os.path.splitext(mkv_file)
+    out_name = name + ".mp4"
+    print(out_name)
+    a = ffmpeg.input(mkv_file).output(out_name)
+    a.run()
+    print("Finished converting {}".format(mkv_file))
 
 if __name__ == '__main__':
 
@@ -70,6 +79,20 @@ if __name__ == '__main__':
         print(f"ArUCo tag type '{args['type']}' is not supported")
         sys.exit(0)
 
+    video_path = args["video"] 
+    if video_path != 0:
+        if video_path[0] == '\\':
+            video_path = video_path[1:]
+        
+        name, ext = os.path.splitext(video_path)
+        if ext == ".mp4":
+            pass
+        elif ext == ".mkv":
+            convert_to_mp4(video_path)
+        else:
+            print(f"Wrong video file format .{ext} is not supported")
+            sys.exit(0)
+    
     aruco_dict_type = ARUCO_DICT[args["type"]]
     calibration_matrix_path = args["K_Matrix"]
     distortion_coefficients_path = args["D_Coeff"]
@@ -77,12 +100,11 @@ if __name__ == '__main__':
     k = np.load(calibration_matrix_path)
     d = np.load(distortion_coefficients_path)
 
-    video = cv2.VideoCapture(args["video"])
+    video = cv2.VideoCapture(video_path)
     time.sleep(2.0)
 
     while True:
         ret, frame = video.read()
-
         if not ret:
             break
 
