@@ -24,7 +24,7 @@ if args["camera"].lower() == "true":
 	
 else:
 	if args["video"] is None:
-		print("[Error] Video file location is not provided")
+		print("[Error] Video data file location is not provided")
 		sys.exit(1)
 
 	video = cv2.VideoCapture(args["video"])
