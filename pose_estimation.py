@@ -31,16 +31,17 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
     detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
     corners, ids, rejected_img_points = detector.detectMarkers(gray)
 
-    marker_length = 0.05
-
-    object_points = np.array([[-marker_length / 2, marker_length / 2, 0],
-                              [marker_length / 2, marker_length / 2, 0],
-                              [marker_length / 2, -marker_length / 2, 0],
-                              [-marker_length / 2, -marker_length / 2, 0]])
     # If markers are detected
     if len(corners) > 0:
         for i in range(0, len(ids)):
-            # Estimate pose of each marker and return the values rvec and tvec---(different from those of camera coefficients)
+            marker_length = 0.04
+            if ids[i] == 98:
+                marker_length = 0.08
+            object_points = np.array([[-marker_length / 2, marker_length / 2, 0],
+                                      [marker_length / 2, marker_length / 2, 0],
+                                      [marker_length / 2, -marker_length / 2, 0],
+                                      [-marker_length / 2, -marker_length / 2, 0]])
+            # Estimate pose of each marker and return the values rvec and tvec
             ret, rvec, tvec = cv2.solvePnP(object_points, corners[i], matrix_coefficients, distortion_coefficients)
 
             if ret:
@@ -48,7 +49,7 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
                 cv2.aruco.drawDetectedMarkers(frame, corners)
 
                 # Draw axis
-                cv2.drawFrameAxes(frame, matrix_coefficients, distortion_coefficients, rvec, tvec, 0.05)
+                cv2.drawFrameAxes(frame, matrix_coefficients, distortion_coefficients, rvec, tvec, marker_length)
 
                 # print((tvec[0]))
                 x, y, z = tvec.flatten()
