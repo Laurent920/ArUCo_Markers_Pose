@@ -54,9 +54,11 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
                 # print((tvec[0]))
                 x, y, z = tvec.flatten()
 
-                cv2.putText(frame, f'x: {x:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-                cv2.putText(frame, f'y: {y:.2f}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-                cv2.putText(frame, f'z: {z:.2f}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+                if ids[i] == 98:
+                    print(rvec)
+                    cv2.putText(frame, f'x: {x:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
+                    cv2.putText(frame, f'y: {y:.2f}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
+                    cv2.putText(frame, f'z: {z:.2f}', (10, 110), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
 
     return frame
 
@@ -114,6 +116,8 @@ def create_data_folder():
                 os.makedirs('Video data/' + date)
             if not os.path.exists(f'Video data/{date}/{time}'):
                 os.makedirs(f'Video data/{date}/{time}')
+                convert_to_mp4(f'Videos(mkv)/{file}', f'Video data/{date}/{time}/{name}.mp4')
+                
 
 
 def toTime(t):
@@ -149,6 +153,7 @@ def sync_video_data(video_folder, data_folder):
 
 
 if __name__ == '__main__':
+    # create_data_folder()
     # sync_video_data('Video data/2024-09-24/09-15-18', 'cleanData/2024.09.24/Kumoko/09.18.05')
     # exit(0)
     ap = argparse.ArgumentParser()
@@ -170,7 +175,7 @@ if __name__ == '__main__':
         sys.exit(0)
 
     video_path = args["video"]
-
+    
     if video_path != 0:
         if not os.path.exists(video_path):
             print(f"File {video_path} not found")
@@ -205,7 +210,8 @@ if __name__ == '__main__':
 
         output = pose_estimation(frame, aruco_dict_type, k, d)
 
-        cv2.imshow('Estimated Pose', frame)
+        scaled_frame = cv2.resize(frame, (960, 540))
+        cv2.imshow('Estimated Pose', scaled_frame)
 
         key = cv2.waitKey(1) & 0xFF
         if key == ord('q'):
