@@ -13,6 +13,10 @@ import os
 import ffmpeg
 from datetime import datetime, timedelta
 
+first_frame = True
+M_cam_to_first_aruco = np.eye(4)  # Transformation matrix from the camera frame to the world frame (= position of the marker on the first video frame)
+M_first_aruco_to_cam = np.eye(4)  #                                world frame to the camera frame
+
 
 def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coefficients):
     '''
@@ -23,7 +27,9 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
     return:-
     frame - The frame with the axis drawn on it
     '''
-
+    global first_frame
+    global M_cam_to_first_aruco
+    global M_first_aruco_to_cam
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     aruco_dict = cv2.aruco.getPredefinedDictionary(aruco_dict_type)
     parameters = cv2.aruco.DetectorParameters()
@@ -51,11 +57,31 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
                 # Draw axis
                 cv2.drawFrameAxes(frame, matrix_coefficients, distortion_coefficients, rvec, tvec, marker_length)
 
-                # print((tvec[0]))
                 x, y, z = tvec.flatten()
+                # Convert rvec to a rotation matrix
+                R, _ = cv2.Rodrigues(rvec)
+
+                M_cam_to_aruco = np.eye(4)
+                M_cam_to_aruco[:3, :3] = R
+                M_cam_to_aruco[:3, 3] = [x, y, z]
 
                 if ids[i] == 98:
-                    print(rvec)
+                    if first_frame:
+                        M_cam_to_first_aruco = M_cam_to_aruco
+
+                        M_first_aruco_to_cam = np.linalg.inv(M_cam_to_first_aruco)
+                        first_frame = False
+                    else:
+                        M_marker_to_first_aruco = np.dot(M_first_aruco_to_cam, M_cam_to_aruco)
+
+                        # Extract the relative rotation and translation vectors from the transformation matrix
+                        R_rel = M_marker_to_first_aruco[:3, :3]
+                        t_rel = M_marker_to_first_aruco[:3, 3]
+
+                        # Convert the relative rotation matrix back to rvec
+                        rvec_rel, _ = cv2.Rodrigues(R_rel)
+                        
+
                     cv2.putText(frame, f'x: {x:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
                     cv2.putText(frame, f'y: {y:.2f}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
                     cv2.putText(frame, f'z: {z:.2f}', (10, 110), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
@@ -103,8 +129,10 @@ def split_video_into_4():
                         file_path = f'cleanData/{date_folder}/{edmo}/{time_folder}/'
                         # ffmpeg.input(file_path).crop(0, 0, 1920, 1080).output(f'{path}top_left.mp4').run()
                         # ffmpeg.input(file_path).crop(1920, 0, 1920, 1080).output(f'{path}top_right.mp4').run()
-                        ffmpeg.input(f'{file_path}/{file}').crop(0, 1080, 1920, 1080).output(f'{path}bottom_left.mp4').run()
-                        ffmpeg.input(f'{file_path}/{file}').crop(1920, 1080, 1920, 1080).output(f'{path}bottom_right.mp4').run()
+                        ffmpeg.input(f'{file_path}/{file}').crop(0, 1080, 1920, 1080).output(
+                            f'{path}bottom_left.mp4').run()
+                        ffmpeg.input(f'{file_path}/{file}').crop(1920, 1080, 1920, 1080).output(
+                            f'{path}bottom_right.mp4').run()
 
 
 def create_data_folder():
@@ -117,7 +145,6 @@ def create_data_folder():
             if not os.path.exists(f'Video data/{date}/{time}'):
                 os.makedirs(f'Video data/{date}/{time}')
                 convert_to_mp4(f'Videos(mkv)/{file}', f'Video data/{date}/{time}/{name}.mp4')
-                
 
 
 def toTime(t):
@@ -145,11 +172,11 @@ def sync_video_data(video_folder, data_folder):
             print(last_log_time)
             print(data_time)
             print(video_time)
-            print(data_time-video_time)
-            ffmpeg.input(video_path, ss=data_time-video_time).output(f'{data_folder}/synced_video_data.mp4', t=last_log_time).run(overwrite_output=True)
+            print(data_time - video_time)
+            ffmpeg.input(video_path, ss=data_time - video_time).output(f'{data_folder}/synced_video_data.mp4',
+                                                                       t=last_log_time).run(overwrite_output=True)
     else:
         print("Video was started later than EDMO session")
-
 
 
 if __name__ == '__main__':
@@ -175,7 +202,7 @@ if __name__ == '__main__':
         sys.exit(0)
 
     video_path = args["video"]
-    
+
     if video_path != 0:
         if not os.path.exists(video_path):
             print(f"File {video_path} not found")
@@ -201,7 +228,7 @@ if __name__ == '__main__':
     d = np.load(distortion_coefficients_path)
 
     video = cv2.VideoCapture(video_path)
-    time.sleep(2.0)
+    fps = video.get(cv2.CAP_PROP_FPS)
 
     while True:
         ret, frame = video.read()
@@ -210,7 +237,7 @@ if __name__ == '__main__':
 
         output = pose_estimation(frame, aruco_dict_type, k, d)
 
-        scaled_frame = cv2.resize(frame, (960, 540))
+        scaled_frame = cv2.resize(frame, (1920, 1080))
         cv2.imshow('Estimated Pose', scaled_frame)
 
         key = cv2.waitKey(1) & 0xFF
