@@ -1,4 +1,8 @@
+import os
+from datetime import datetime
+
 import cv2
+import numpy as np
 
 ARUCO_DICT = {
 	"DICT_4X4_50": cv2.aruco.DICT_4X4_50,
@@ -23,6 +27,7 @@ ARUCO_DICT = {
 	"DICT_APRILTAG_36h10": cv2.aruco.DICT_APRILTAG_36h10,
 	"DICT_APRILTAG_36h11": cv2.aruco.DICT_APRILTAG_36h11
 }
+
 
 def aruco_display(corners, ids, rejected, image):
 	if len(corners) > 0:
@@ -55,3 +60,46 @@ def aruco_display(corners, ids, rejected, image):
 			print("[Inference] ArUco marker ID: {}".format(markerID))
 			# show the output image
 	return image
+
+
+def toTime(t):
+	try:
+		return datetime.strptime(t, "%H:%M:%S")
+	except ValueError as e:
+		try:
+			return datetime.strptime(t, "%H:%M:%S.%f")
+		except ValueError as e:
+			print(f'error: {e} with time {t}')
+
+
+def rvec_to_quaternion(rvec):
+	# TODO turn rvec into quaternion for smoother animation transition
+
+	# Calculate the angle of rotation (magnitude of rvec)
+	angle = np.linalg.norm(rvec)
+
+	# Avoid division by zero in case of zero rotation vector
+	if angle == 0:
+		return np.array([0, 0, 0, 1])  # No rotation, return the identity quaternion
+
+	# Calculate quaternion components
+	qw = np.cos(angle / 2)
+	qx = np.sin(angle / 2) * (rvec[0] / angle)
+	qy = np.sin(angle / 2) * (rvec[1] / angle)
+	qz = np.sin(angle / 2) * (rvec[2] / angle)
+
+	return np.array([qx, qy, qz, qw])
+
+
+def write_log(path, dict_all_pos):
+	'''
+	Write in log file: frame index, translation vector, rotation vector
+	for each frame the aruco markers are detected
+	'''
+	dir_path = os.path.dirname(path)
+	for tag_id, data_list in dict_all_pos.items():
+		path = f'{dir_path}/marker_{tag_id}.log'
+		with open(path, 'w') as f:
+			f.write('frame index, translation vector, rotation vector\n')
+			for index, pose in data_list:
+				f.write(f'{index}, {pose[0]}, {pose[1]}\n')
