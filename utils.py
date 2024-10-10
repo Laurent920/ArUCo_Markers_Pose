@@ -70,7 +70,7 @@ def toTime(t):
 			return datetime.strptime(t, "%H:%M:%S.%f")
 		except ValueError as e:
 			print(f'error: {e} with time {t}')
-
+      
 
 def rvec_to_quaternion(rvec):
 	# TODO turn rvec into quaternion for smoother animation transition

@@ -9,13 +9,14 @@ import argparse
 import os
 import shutil
 import ffmpeg
-from tqdm import tqdm
+from datetime import datetime
 
 first_frame = True
 M_cam_to_first_aruco = np.eye(4)  # Transformation matrix from the camera frame to the world frame (= position of the marker on the first video frame)
 M_first_aruco_to_cam = np.eye(4)  #                                world frame to the camera frame
-keep_mkv = True  # Keep at False -> TODO implement logic for keeping mkv files
+keep_mkv = True  
 ext = '.mp4'
+camera_id = 0
 
 
 def get_aruco_pose(frame, aruco_dict_type, matrix_coefficients, distortion_coefficients, valid_tags, show_img=False):
@@ -43,7 +44,7 @@ def get_aruco_pose(frame, aruco_dict_type, matrix_coefficients, distortion_coeff
     if len(corners) > 0:
         for i in range(0, len(ids)):
             if ids[i] not in valid_tags:
-                return frame if show_img else pos_dict
+                continue
             marker_length = 0.04
             if ids[i] == 98:
                 marker_length = 0.09
@@ -63,25 +64,26 @@ def get_aruco_pose(frame, aruco_dict_type, matrix_coefficients, distortion_coeff
                 M_cam_to_aruco[:3, :3] = R
                 M_cam_to_aruco[:3, 3] = [x, y, z]
 
-                if not show_img:
-                    if first_frame and ids[i] == 98:
-                        # Record the transformation matrices
-                        M_cam_to_first_aruco = M_cam_to_aruco
-                        M_first_aruco_to_cam = np.linalg.inv(M_cam_to_first_aruco)
+                # Record the positions of the aruco markers with regard to the initial position
+                if first_frame and ids[i] == 98:
+                    # Record the transformation matrices
+                    M_cam_to_first_aruco = M_cam_to_aruco
+                    M_first_aruco_to_cam = np.linalg.inv(M_cam_to_first_aruco)
 
-                        pos_dict[f'{ids[i]}'] = [np.array([0, 0, 0]), np.array([0, 0, 0])]
-                        first_frame = False
-                    else:
-                        M_marker_to_first_aruco = np.dot(M_first_aruco_to_cam, M_cam_to_aruco)
-
-                        # Extract the relative rotation and translation vectors from the transformation matrix
-                        R_rel = M_marker_to_first_aruco[:3, :3]
-                        t_rel = M_marker_to_first_aruco[:3, 3]
-
-                        # Convert the relative rotation matrix back to rvec
-                        rvec_rel, _ = cv2.Rodrigues(R_rel)
-                        pos_dict[f'{ids[i]}'] = [t_rel, rvec_rel.flatten()]
+                    pos_dict[f'{ids[i]}'] = [np.array([0, 0, 0]), np.array([0, 0, 0])]
+                    first_frame = False
                 else:
+                    M_marker_to_first_aruco = np.dot(M_first_aruco_to_cam, M_cam_to_aruco)
+
+                    # Extract the relative rotation and translation vectors from the transformation matrix
+                    R_rel = M_marker_to_first_aruco[:3, :3]
+                    t_rel = M_marker_to_first_aruco[:3, 3]
+
+                    # Convert the relative rotation matrix back to rvec
+                    rvec_rel, _ = cv2.Rodrigues(R_rel)
+                    pos_dict[f'{ids[i]}'] = [t_rel, rvec_rel.flatten()]
+                    
+                if show_img:
                     # Draw a square around the markers
                     cv2.aruco.drawDetectedMarkers(frame, corners)
 
@@ -95,7 +97,7 @@ def get_aruco_pose(frame, aruco_dict_type, matrix_coefficients, distortion_coeff
                         cv2.putText(frame, f'a: {a:.2f}', (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
                         cv2.putText(frame, f'b: {b:.2f}', (10, 190), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
                         cv2.putText(frame, f'c: {c:.2f}', (10, 230), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
-    return frame if show_img else pos_dict
+    return pos_dict
 
 
 def convert_to_mp4(mkv_file, out_name):
@@ -160,19 +162,22 @@ def create_data_folder():
     '''
     global keep_mkv
     for file in os.listdir('Videos(mkv)/'):
-        name, ext = os.path.splitext(file)
+        filename, ext = os.path.splitext(file)
         if ext == '.mkv':
-            date, time = name.replace('-', '.').split(' ')
+            date, time = filename.replace('-', '.').split(' ')
+            if not os.path.exists('Video data'):
+                os.makedirs(f'Video data')
             if not os.path.exists('Video data/' + date):
                 os.makedirs('Video data/' + date)
             if not os.path.exists(f'Video data/{date}/{time}'):
                 os.makedirs(f'Video data/{date}/{time}')
-                source = f'Videos(mkv)/{file}'
-                destination = f'Video data/{date}/{time}/'
-                if keep_mkv:
-                    shutil.move(source, destination)
-                else:
-                    convert_to_mp4(source, f'{destination}{name}.mp4')
+                
+            source = f'Videos(mkv)/{file}'
+            destination = f'Video data/{date}/{time}/'
+            if keep_mkv:
+                shutil.move(source, destination)
+            else:
+                convert_to_mp4(source, f'{destination}{filename}.mp4')
         else:
             print("Wrong format file in Videos(mkv)/")
 
@@ -215,23 +220,22 @@ def preprocess_video(date, EDMO_name):
         print(f"Folder {video_path} or folder {data_path} not found")
         sys.exit(0)
     if len(os.listdir(video_path)) != len(os.listdir(data_path)):
-        print("The number of videos in {video_path} doesn't match the number of log sessions in {data_path},\
-                please check that they correspond!")
+        print("The number of videos in {video_path} doesn't match the number of log sessions in {data_path}, please check that they correspond!")
         x = input('To continue anyways type cont:')
         if x != 'cont':
             print("aborting data preprocessing")
-            return True
+            sys.exit(0)
 
     # Synchronize the videos with the data logs
     print("Synchronizing videos with data")
-    for v, data in tqdm(zip(os.listdir(video_path), os.listdir(data_path))):
+    for v, data in zip(os.listdir(video_path), os.listdir(data_path)):
         sync_video_data(f'{video_path}{v}', f'{data_path}{data}')
 
     # Split the videos to only keep the relevant parts
     split_video_into_4()
 
     print("Finished preprocessing the videos")
-    return True
+    sys.exit(0)
 
 
 def pose_estimation(k, d, aruco_dict_type, video_path, date, EDMO_name, valid_tags, show):
@@ -241,46 +245,71 @@ def pose_estimation(k, d, aruco_dict_type, video_path, date, EDMO_name, valid_ta
         ext = '.mkv'
 
     if date:
-        stop_program = preprocess_video(date, EDMO_name)
+        preprocess_video(date, EDMO_name)
 
-    if video_path != 0:
+    video = cv2.VideoCapture(video_path)
+    fps = video.get(cv2.CAP_PROP_FPS)
+    print(f'fps: {fps}')
+    use_video = video_path != camera_id
+    if use_video:
         if not os.path.exists(video_path):
             print(f"File {video_path} not found")
             sys.exit(0)
 
         name, ext = os.path.splitext(video_path)
-        if ext != ".mp4" and ext != ".mkv":
-            print(f"Wrong video file format .{ext} is not supported")
+        if ext != ".mp4" and ext != ".mkv" and ext != '.jpg':
+            print(f"Wrong video file format {ext} is not supported")
             sys.exit(0)
+    else: # Record the camera feed
+        frame_width = int(video.get(3)) 
+        frame_height = int(video.get(4)) 
+        
+        size = (frame_width, frame_height) 
+        file_date = datetime.now().strftime("%d-%m-%Y %H-%M-%S")
+        
+        date, time = file_date.replace('-', '.').split(' ')
+        if not os.path.exists('Video data'):
+            os.makedirs(f'Video data')
+        if not os.path.exists('Video data/' + date):
+            os.makedirs(f'Video data/{date}')
+        if not os.path.exists(f'Video data/{date}/{time}'):
+            os.makedirs(f'Video data/{date}/{time}')    
+        video_path = f'Video data/{date}/{time}/{file_date}.mkv'
+        
+        print(f'Video file will be stored at {video_path}')
+        output_video = cv2.VideoWriter(video_path,  
+                                cv2.VideoWriter_fourcc(*'MJPG'), 
+                                fps, size) 
 
-    video = cv2.VideoCapture(video_path)
-    fps = video.get(cv2.CAP_PROP_FPS)
-    print(f'fps: {fps}')
-
-    index = 1
+    frame_index = 1
     dict_all_pos = {}
     while True:
         ret, frame = video.read()
         if not ret:
-            break
+            break 
+        if not use_video:
+            output_video.write(frame)
+        
         # Improve detection by applying smoothing
         frame = cv2.bilateralFilter(frame, d=9, sigmaColor=75, sigmaSpace=75)
         output = get_aruco_pose(frame, aruco_dict_type, k, d, valid_tags, show_img=show)
 
-        if show:
+        if show or not use_video:
             scaled_frame = cv2.resize(frame, (960, 540))
             cv2.imshow('Estimated Pose', scaled_frame)
             key = cv2.waitKey(1) & 0xFF
             if key == ord('q'):
                 break
-        else:
-            if len(output) > 0:
-                for tag_id, v in output.items():
-                    if tag_id not in dict_all_pos:
-                        dict_all_pos[tag_id] = []
-                    dict_all_pos[tag_id].append([index, v])
-        index += 1
+            
+        if len(output) > 0:
+            for tag_id, v in output.items():
+                if tag_id not in dict_all_pos:
+                    dict_all_pos[tag_id] = []
+                dict_all_pos[tag_id].append([frame_index, v])
+        frame_index += 1
     video.release()
+    if not use_video:
+        output_video.release()
     cv2.destroyAllWindows()
     write_log(video_path, dict_all_pos)
 
@@ -290,7 +319,7 @@ if __name__ == '__main__':
     ap.add_argument("-k", "--K_Matrix", default="calibration_matrix.npy", help="Path to calibration matrix (numpy file)")
     ap.add_argument("-d", "--D_Coeff", default="distortion_coefficients.npy", help="Path to distortion coefficients (numpy file)")
     ap.add_argument("-t", "--type", type=str, default="DICT_4X4_100", help="Type of ArUCo tag to detect")
-    ap.add_argument("-v", "--video", type=str, default=0, help="Path to video (.mp4 file)")
+    ap.add_argument("-v", "--video", type=str, default=camera_id, help="Path to video or uses laptop camera feed by defaut)")
     ap.add_argument("-p", "--preprocess_date", type=str, default=None, help="Date of the videos in Videos(mkv) to preprocess")
     ap.add_argument("-edmo", "--EDMO_name", type=str, default='Kumoko', help="Name of the EDMO robot")
     ap.add_argument("-s", "--show", type=bool, default=False, help="Show output frame")
