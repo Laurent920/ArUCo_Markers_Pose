@@ -22,12 +22,12 @@ camera_id = 0
 def get_aruco_pose(frame, aruco_dict_type, matrix_coefficients, distortion_coefficients, valid_tags, show_img=False):
     '''
     frame - Frame from the video stream
+    aruco_dict_type - Type of Aruco dictionary used
     matrix_coefficients - Intrinsic matrix of the calibrated camera
     distortion_coefficients - Distortion coefficients associated with your camera
+    valid_tags - The id of the Aruco markers we want to detect
 
-    return:-
-    show = True: frame - The frame with the axis drawn on it
-    show = False: pos_dict - Dictionary of aruco ids with their tvec and rvec
+    return: - A dictionary with the valid_tags as keys and its position if detected
     '''
     global first_frame
     global M_cam_to_first_aruco
@@ -238,11 +238,30 @@ def preprocess_video(date, EDMO_name):
     sys.exit(0)
 
 
-def pose_estimation(k, d, aruco_dict_type, video_path, date, EDMO_name, valid_tags, show):
+def pose_estimation(video_path, EDMO_name,
+                    date=None,
+                    aruco_dict_type="DICT_4X4_100",
+                    show=False, 
+                    calibration_matrix_path="calibration_matrix.npy", 
+                    distortion_coefficients_path="distortion_coefficients.npy"):
     global keep_mkv
     global ext
     if keep_mkv:
         ext = '.mkv'
+
+    k = np.load(calibration_matrix_path)
+    d = np.load(distortion_coefficients_path)
+    
+    # Get the valid Aruco ids for the EDMO (format: {leg0 leg1 leg2 leg3 middle corner0 corner1 corner2 corner3})
+    valid_tags = []
+    try:
+        with open(f'tags/{EDMO_name}.txt', 'r') as f:
+            content = f.read().split(' ')
+            for tag_id in content:
+                valid_tags.append(int(tag_id))
+    except FileNotFoundError:
+        print(f"Error: The file tags/{EDMO_name}.txt is missing.")
+        return
 
     if date:
         preprocess_video(date, EDMO_name)
@@ -257,7 +276,7 @@ def pose_estimation(k, d, aruco_dict_type, video_path, date, EDMO_name, valid_ta
             sys.exit(0)
 
         name, ext = os.path.splitext(video_path)
-        if ext != ".mp4" and ext != ".mkv" and ext != '.jpg':
+        if ext != ".mp4" and ext != ".mkv":
             print(f"Wrong video file format {ext} is not supported")
             sys.exit(0)
     else: # Record the camera feed
@@ -325,11 +344,6 @@ if __name__ == '__main__':
     ap.add_argument("-s", "--show", type=bool, default=False, help="Show output frame")
     args = vars(ap.parse_args())
 
-    calibration_matrix_path = args["K_Matrix"]
-    distortion_coefficients_path = args["D_Coeff"]
-    k = np.load(calibration_matrix_path)
-    d = np.load(distortion_coefficients_path)
-
     if ARUCO_DICT.get(args["type"], None) is None:
         print(f"ArUCo tag type '{args['type']}' is not supported")
         sys.exit(0)
@@ -340,13 +354,4 @@ if __name__ == '__main__':
     EDMO_name = args['EDMO_name']
     show = args['show']
 
-    valid_tags = []
-    try:
-        with open(f'tags/{EDMO_name}.txt', 'r') as f:
-            content = f.read().split(' ')
-            for tag_id in content:
-                valid_tags.append(int(tag_id))
-    except FileNotFoundError:
-        print(f"Error: The file tags/{EDMO_name}.txt is missing.")
-
-    pose_estimation(k, d, aruco_dict_type, video_path, date, EDMO_name, valid_tags, show)
+    pose_estimation(video_path, EDMO_name, date=date, show=show, aruco_dict_type=aruco_dict_type)
