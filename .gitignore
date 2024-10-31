@@ -2,4 +2,5 @@
 *.mkv
 *.mp4
 *.jpg
-.idea
+**/.idea
+**/.vs

@@ -276,7 +276,7 @@ def pose_estimation(video_path, EDMO_name,
             sys.exit(0)
 
         name, ext = os.path.splitext(video_path)
-        if ext != ".mp4" and ext != ".mkv":
+        if ext.lower() != ".mp4" and ext.lower() != ".mkv":
             print(f"Wrong video file format {ext} is not supported")
             sys.exit(0)
     else: # Record the camera feed
