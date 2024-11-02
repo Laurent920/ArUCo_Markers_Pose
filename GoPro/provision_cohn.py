@@ -250,9 +250,19 @@ async def main(ssid: str, password: str, identifier: str | None, certificate: Pa
         await set_date_time(manager)
         await connect_to_access_point(manager, ssid, password)
         credentials = await provision_cohn(manager)
+        
+        # Create the files if not existing
+        certificate.parent.mkdir(parents=True, exist_ok=True)
+        certificate.touch(exist_ok=True)
+        credPath = Path(certificate.parts[0]+'/credentials.txt')
+        credPath.parent.mkdir(parents=True, exist_ok=True)
+        credPath.touch(exist_ok=True)
         with open(certificate, "w") as fp:
             fp.write(credentials.certificate)
             logger.info(f"Certificate written to {certificate.resolve()}")
+        with open(credPath, 'w') as cred:
+            cred.write(f'{credentials.username} {credentials.password} {credentials.ip_address} {certificate.__str__()}')
+            logger.info(f"Credentials written to {credPath.resolve()}")
 
     except Exception as exc:  # pylint: disable=broad-exception-caught
         logger.error(repr(exc))
@@ -267,28 +277,27 @@ if __name__ == "__main__":
     parser.add_argument("ssid", type=str, help="SSID of network to connect to")
     parser.add_argument("password", type=str, help="Password of network to connect to")
     parser.add_argument(
-        "-i",
-        "--identifier",
+        "identifier",
         type=str,
-        help="Last 4 digits of GoPro serial number, which is the last 4 digits of the default camera SSID. If not used, first discovered GoPro will be connected to",
-        default=None,
+        help="Last 4 digits of GoPro serial number, which is the last 4 digits of the default camera SSID. If not used, first discovered GoPro will be connected to"
     )
     parser.add_argument(
         "-c",
         "--certificate",
-        type=Path,
+        type=str,
         help="Path to write retrieved COHN certificate.",
-        default=Path("cohn.crt"),
+        default="cohn.crt",
     )
     args = parser.parse_args()
 
     try:
         # python provision_cohn.py VOO-RWE86FA 9rMpcn7Cc3d4ccJxPb
-        # python provision_cohn.py iPhone Laurent1
+        # python provision_cohn.py iPhone Laurent1 -i "GoPro 6665"
         # python provision_cohn.py devolo-111 MLZRGSBNSYZZEKGA
 
-        # asyncio.run(main("iPhone", "Laurent1", "GoPro 6665", Path("cohn.crt")))
-        asyncio.run(main(args.ssid, args.password, args.identifier, args.certificate))
+        # asyncio.run(main("EDMO", "edmotest", "GoPro 6665", Path("cohn.crt")))
+        identifier = args.identifier
+        asyncio.run(main(args.ssid, args.password, identifier, Path(identifier+'/'+args.certificate)))
     except Exception as e:  # pylint: disable=broad-exception-caught
         logger.error(e)
         sys.exit(-1)

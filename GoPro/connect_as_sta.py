@@ -182,6 +182,8 @@ async def connect_to_network(
     logger.debug(f"Writing: {connect_request.hex(':')}")
     await fragment_and_write_gatt_char(manager.client, GoProUuid.NETWORK_MANAGEMENT_REQ_UUID.value, connect_request)
     while response := await manager.get_next_response_as_protobuf():
+        logger.info(f"response: {hex(response.action_id)}")
+        logger.info(f"response: {response.data}")
         if response.feature_id != 0x02:
             raise RuntimeError("Only expect to receive Feature ID 0x02 responses after connect request")
         if response.action_id == 0x84:  # RequestConnect Response
@@ -191,10 +193,11 @@ async def connect_to_network(
         elif response.action_id == 0x0C:  # NotifProvisioningState Notifications
             provisioning_notification: proto.NotifProvisioningState = response.data  # type: ignore
             logger.info(f"Received network provisioning status: {provisioning_notification}")
+            
             if provisioning_notification.provisioning_state == proto.EnumProvisioning.PROVISIONING_SUCCESS_NEW_AP:
                 return
             if provisioning_notification.provisioning_state != proto.EnumProvisioning.PROVISIONING_STARTED:
-                return 
+                return
                 raise RuntimeError(f"Unexpected provisioning state: {provisioning_notification.provisioning_state}")
         else:
             raise RuntimeError("Only expect to receive Action ID 0x84, 0x85, or 0x0C responses after scan request")

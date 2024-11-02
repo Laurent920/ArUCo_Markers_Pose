@@ -1,14 +1,14 @@
 import enum
 import json
 from typing import Awaitable, Callable, Any, TypeVar, Dict
+import asyncio
+
 
 from bleak import BleakClient
 from bleak.backends.characteristic import BleakGATTCharacteristic
 import requests
 
 from google.protobuf.message import Message as ProtobufMessage
-
-
 
 from _init_ import GOPRO_BASE_UUID, GOPRO_BASE_URL, logger, connect_ble
 
