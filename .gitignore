@@ -1,6 +1,7 @@
 **/__pycache__
 *.mkv
 *.mp4
+*.MP4
 *.jpg
 **/.idea
 **/.vs

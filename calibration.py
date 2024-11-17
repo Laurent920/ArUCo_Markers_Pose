@@ -3,13 +3,14 @@ Sample Usage:-
 python calibration.py --dir calibration_checkerboard/ --square_size 0.024
 '''
 
+from matplotlib import use
 import numpy as np
 import cv2
 import os
 import argparse
 
 
-def calibrate(dirpath, square_size, width, height, visualize=False):
+def calibrate(dirpath, square_size, width, height, visualize=False, use_video=False):
     """ Apply camera calibration operation for images in the given directory path. """
 
     # termination criteria
@@ -26,15 +27,40 @@ def calibrate(dirpath, square_size, width, height, visualize=False):
     imgpoints = []  # 2d points in image plane.
 
     images = os.listdir(dirpath)
+    video:cv2.VideoCapture
+    if use_video:
+        for fname  in images:
+            if os.path.splitext(fname)[1].lower() == ".mp4":
+                video = cv2.VideoCapture(os.path.join(dirpath, fname))
+                break
 
-    for fname in images:
-        img = cv2.imread(os.path.join(dirpath, fname))
+    i, j = 0, 0
+    skip_frame = False
+    img:np.ndarray
+    while True:
+        if use_video:
+            ret, img = video.read()
+            if not ret:
+                break 
+        else:
+            fname = images[i]
+            img = cv2.imread(os.path.join(dirpath, fname))
+            
+        if use_video: # Skip every 20 frames
+            if j >= 20:
+                j = 0
+                skip_frame = False
+            if skip_frame:
+                i, j = i+1, j+1
+                continue
+            skip_frame = True
+            
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
         # Find the chess board corners
         ret, corners = cv2.findChessboardCorners(gray, (width, height), None)
-
-        # If found, add object points, image points (after refining them)
+        print(i, ret)
+        # If found, add object points, image points (after refining them)            
         if ret:
             objpoints.append(objp)
 
@@ -44,10 +70,12 @@ def calibrate(dirpath, square_size, width, height, visualize=False):
             # Draw and display the corners
             img = cv2.drawChessboardCorners(img, (width, height), corners2, ret)
 
-        if visualize:
-            cv2.imshow('img',img)
-            cv2.waitKey(0)
-
+            if visualize:
+                cv2.putText(img, f'frame nb: {i}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
+                cv2.imshow('img',cv2.resize(img, (960, 540)))
+                cv2.waitKey(0)
+            
+        i += 1
 
     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
 
@@ -56,18 +84,25 @@ def calibrate(dirpath, square_size, width, height, visualize=False):
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
-    ap.add_argument("-d", "--dir", required=True, help="Path to folder containing checkerboard images for calibration")
-    ap.add_argument("-w", "--width", type=int, help="Width of checkerboard (default=9)",  default=9)
+    ap.add_argument("-d", "--dir", required=True, help="Path to folder containing checkerboard images/video for calibration")
+    ap.add_argument("-uv", "--use_video", help="Use first video file in dir to calibrate the camera (uses every 20 frames)", default=False)
+    ap.add_argument("-w", "--width", type=int, help="Width of checkerboard (default=7)",  default=7)
     ap.add_argument("-t", "--height", type=int, help="Height of checkerboard (default=6)", default=6)
     ap.add_argument("-s", "--square_size", type=float, default=1, help="Length of one edge (in metres)")
     ap.add_argument("-v", "--visualize", type=str, default="False", help="To visualize each checkerboard image")
     args = vars(ap.parse_args())
     
     dirpath = args['dir']
+    
+    if args['use_video'].lower() == "true":
+        use_video = True
+    else:
+        use_video = False
     # 2.4 cm == 0.024 m
     # square_size = 0.024
     square_size = args['square_size']
 
+    # Interior size of the checkerboard 
     width = args['width']
     height = args['height']
 
@@ -75,7 +110,7 @@ if __name__ == '__main__':
         visualize = True
     else:
         visualize = False
-    ret, mtx, dist, rvecs, tvecs = calibrate(dirpath, square_size, visualize=visualize, width=width, height=height)
+    ret, mtx, dist, rvecs, tvecs = calibrate(dirpath, square_size, visualize=visualize, width=width, height=height, use_video=use_video)
 
     print(mtx)
     print(dist)
