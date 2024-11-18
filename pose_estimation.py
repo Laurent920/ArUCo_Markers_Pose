@@ -9,6 +9,7 @@ import argparse
 import os
 import shutil
 import ffmpeg
+import json
 from datetime import datetime
 
 
@@ -106,7 +107,7 @@ class Aruco_pose():
                             self.M_cam_to_first_aruco = M_cam_to_aruco
                             self.M_first_aruco_to_cam = np.linalg.inv(self.M_cam_to_first_aruco)
 
-                            pos_dict[f'{ids[i]}'] = [np.array([0, 0, 0]), np.array([0, 0, 0])]
+                            pos_dict[f'{ids[i]}'] = [np.array([0, 0, 0]).tolist(), np.array([0, 0, 0]).tolist()]
                             self.first_frame = False
                         
                     else:
@@ -118,7 +119,7 @@ class Aruco_pose():
 
                         # Convert the relative rotation matrix back to rvec
                         rvec_rel, _ = cv2.Rodrigues(R_rel)
-                        pos_dict[f'{ids[i]}'] = [t_rel, rvec_rel.flatten()]
+                        pos_dict[f'{ids[i]}'] = [t_rel.tolist(), rvec_rel.flatten().tolist()]
                         
                     if self.show:
                         # Draw a square around the markers
@@ -332,15 +333,15 @@ class Aruco_pose():
             if len(output) > 0:
                 for tag_id, v in output.items():
                     if tag_id not in dict_all_pos:
-                        dict_all_pos[tag_id] = []
-                    dict_all_pos[tag_id].append([frame_index, v])
+                        dict_all_pos[tag_id] = {}
+                    dict_all_pos[tag_id][frame_index] = v
             frame_index += 1
         video.release()
         if not use_video:
             output_video.release()
         cv2.destroyAllWindows()
-        write_log(self.video_path, dict_all_pos)
-
+        f = open(f"{os.path.dirname(self.video_path)}/marker_pose.log", "w")
+        json.dump(dict_all_pos, f)
 
 if __name__ == '__main__':
     # Example usage : python pose_estimation.py -v 'Videos(mkv)/GX010412.MP4'

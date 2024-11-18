@@ -1,16 +1,22 @@
-import cv2
-import sys
+import json
 from utils import *
 import argparse
 import os
-import shutil
-import ffmpeg
-from datetime import datetime
-
+import re
 
 class Pose_data():
-    def __init__(self) -> None:
-        pass
+    dict_all_pose: dict[str, dict[str, list[list, list]]]
+    
+    def __init__(self, dir_path:str):
+        for filename in os.listdir(dir_path):
+            pattern = r"^marker_pose*\.log$"
+            if not re.match(pattern, filename):
+                continue
+            
+            with open(filename, 'r') as f:
+                dict_all_pose = json.load(f)
+        
+    
     
     
     
