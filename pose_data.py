@@ -3,8 +3,28 @@ from utils import *
 import argparse
 import os
 import re
+from dataclasses import dataclass
 
+
+@dataclass
+class corner_pose:
+    # in cm
+    mat_width = 110
+    mat_length = 170 
+    
+    border_size = 1.6
+    marker_size = 4
+    origin_value = (marker_size + border_size)/2 
+    tag_poses:dict[str, tuple] = {}
+    tag_poses[4] = (origin_value, origin_value)
+    tag_poses[0] = (origin_value, mat_width-origin_value)
+    tag_poses[2] = (mat_length-origin_value, mat_width-origin_value)
+    tag_poses[3] = (mat_length-origin_value, origin_value)
+    
+    
 class Pose_data():
+    
+    
     dict_all_pose: dict[str, dict[str, list[list, list]]]
     
     def __init__(self, dir_path:str):
