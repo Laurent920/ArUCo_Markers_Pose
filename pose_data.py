@@ -21,6 +21,17 @@ class corner_pose:
     tag_poses[2] = (mat_length-origin_value, mat_width-origin_value)
     tag_poses[3] = (mat_length-origin_value, origin_value)
     
+    # distance between middle tag (if existing) and the leg tags
+    tag_poses['snake 98']
+    tag_poses['spider 98']
+
+    # dist between tag 1-47
+    tag_poses['snake y']
+    tag_poses['spider y']
+    
+    # dist between tag 5-24
+    tag_poses['spider x']
+    
     
 class Pose_data():
     
@@ -35,6 +46,9 @@ class Pose_data():
             
             with open(filename, 'r') as f:
                 dict_all_pose = json.load(f)
+                
+    def compute_error():  
+        
         
     
     
