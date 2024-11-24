@@ -2,6 +2,7 @@
 Sample Usage:-
 python pose_estimation.py --K_Matrix calibration_matrix.npy --D_Coeff distortion_coefficients.npy --type DICT_5X5_100
 '''
+from sre_compile import dis
 import cv2
 import sys
 from utils import *
@@ -18,19 +19,17 @@ class Aruco_pose():
     ext = '.mp4'
     camera_id = 0
     
-    mat_width = 110
-    mat_length = 170 
-    
     def __init__(self, 
                  video_path:str, 
-                 EDMO_name:str,
+                 EDMO_name:str="Snake",
                  show:bool=False,
-                 calibration_matrix_path:str="calibration_matrix.npy", 
-                 distortion_coefficients_path:str="distortion_coefficients.npy",
+                 aruco_marker_estimation_path:str="ArUCo_Markers_Pose/", 
                  aruco_dict_type:str="DICT_4X4_100") -> None:
+        if aruco_marker_estimation_path[-1] != "/":
+            aruco_marker_estimation_path += "/"
         
-        self.k = np.load(calibration_matrix_path)
-        self.d = np.load(distortion_coefficients_path)
+        self.k = np.load(f"{aruco_marker_estimation_path}calibration_matrix.npy")
+        self.d = np.load(f"{aruco_marker_estimation_path}distortion_coefficients.npy")
         self.aruco_dict_type = aruco_dict_type
         self.show = show
         if video_path[0] != '/':
@@ -44,7 +43,7 @@ class Aruco_pose():
         # Get the valid Aruco ids for the EDMO (format: {leg0 leg1 leg2 leg3 middle corner0 corner1 corner2 corner3})
         self.valid_tags = []
         try:
-            with open(f'tags/{EDMO_name}.txt', 'r') as f:
+            with open(f'{aruco_marker_estimation_path}tags/{EDMO_name}.txt', 'r') as f:
                 content = f.read().split(' ')
                 for tag_id in content:
                     self.valid_tags.append(int(tag_id))
@@ -81,8 +80,6 @@ class Aruco_pose():
                 if ids[i] not in self.valid_tags:
                     continue
                 marker_length = 0.04
-                if ids[i] == 4:
-                    marker_length = 0.05
                 if ids[i] == 98:
                     marker_length = 0.09
                 object_points = np.array([[-marker_length / 2, marker_length / 2, 0],
@@ -334,7 +331,7 @@ class Aruco_pose():
                 for tag_id, v in output.items():
                     if tag_id not in dict_all_pos:
                         dict_all_pos[tag_id] = {}
-                    dict_all_pos[tag_id][frame_index] = v
+                    dict_all_pos[tag_id][int(frame_index)] = v
             frame_index += 1
         video.release()
         if not use_video:
@@ -346,12 +343,11 @@ class Aruco_pose():
 if __name__ == '__main__':
     # Example usage : python pose_estimation.py -v 'Videos(mkv)/GX010412.MP4'
     ap = argparse.ArgumentParser()
-    ap.add_argument("-k", "--K_Matrix", default="calibration_matrix.npy", help="Path to calibration matrix (numpy file)")
-    ap.add_argument("-d", "--D_Coeff", default="distortion_coefficients.npy", help="Path to distortion coefficients (numpy file)")
+    ap.add_argument("-p", "--path", default="ArUCo_Markers_Pose", help="Path to ArUCo_Markers_Pose folder")
     ap.add_argument("-t", "--type", type=str, default="DICT_4X4_100", help="Type of ArUCo tag to detect")
     ap.add_argument("-v", "--video", type=str, default=0, help="Path to video or uses laptop camera feed by defaut)")
     # ap.add_argument("-p", "--preprocess_video", type=str, default=None, help="Video to preprocess (i.e sync video and data, cut to )")
-    ap.add_argument("-edmo", "--EDMO_name", type=str, default='Kumoko', help="Name of the EDMO robot")
+    ap.add_argument("-edmo", "--EDMO_type", type=str, default='Spider', help="Type of EDMO (Spider, Snake, ...)")
     ap.add_argument("-s", "--show", type=bool, default=False, help="Show output frame")
     args = vars(ap.parse_args())
 
@@ -362,8 +358,8 @@ if __name__ == '__main__':
 
     video_path = args['video']
     # preprocess_video = args['preprocess_video']
-    EDMO_name = args['EDMO_name']
+    EDMO_name = args['EDMO_type']
     show = args['show']
 
-    aruco_pose = Aruco_pose(video_path, EDMO_name, show=show, aruco_dict_type=aruco_dict_type)
+    aruco_pose = Aruco_pose(video_path, EDMO_name, show=show, aruco_dict_type=aruco_dict_type,aruco_marker_estimation_path=args["path"])
     aruco_pose.pose_estimation()
