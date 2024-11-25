@@ -303,8 +303,7 @@ class Pose_data():
                 self.rx_avg_error += (corners[tag2][1][0] - corners[tag1][1][0])
                 self.ry_avg_error += (corners[tag2][1][1] - corners[tag1][1][1])
                 self.rz_avg_error += (corners[tag2][1][2] - corners[tag1][1][2])
-                        
-
+                    
 
 
     
