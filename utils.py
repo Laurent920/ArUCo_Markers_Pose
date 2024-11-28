@@ -84,9 +84,9 @@ def rvec_to_quaternion(rvec):
 
 	# Calculate quaternion components
 	qw = np.cos(angle / 2)
-	qx = np.sin(angle / 2) * (rvec[0] / angle)
-	qy = np.sin(angle / 2) * (rvec[1] / angle)
-	qz = np.sin(angle / 2) * (rvec[2] / angle)
+	qx = np.sin(angle / 2) * (rvec[0][0] / angle)
+	qy = np.sin(angle / 2) * (rvec[1][0] / angle)
+	qz = np.sin(angle / 2) * (rvec[2][0] / angle)
 
 	return np.array([qx, qy, qz, qw])
 

@@ -1,6 +1,4 @@
 import json
-
-from utils import *
 import argparse
 import os
 import re
@@ -45,14 +43,14 @@ class Aruco_Const:
     
     
 class Pose_data():
-    dict_all_pose: dict[str, dict[str, list[list, list]]]
+    dict_all_pose: dict[str, dict[str, list[list, list]]] = None
     edmo_poses: dict[int, list[int]] = {}
     edmo_rots: dict[int, list[int]] = {}
     x, y, z, t = [], [], [], []
     nbFrames = None
     x_avg_error, y_avg_error, z_avg_error = 0, 0, 0
     rx_avg_error, ry_avg_error, rz_avg_error = 0, 0, 0
-
+    avg_denom = 0
     
     def __init__(self, dir_path:str, edmo_type:str="Snake"):
         self.edmo_type = edmo_type
@@ -61,15 +59,21 @@ class Pose_data():
             if not re.match(pattern, filename):
                 continue
             
-            with open(dir_path+filename, 'r') as f:
+            with open(f'{dir_path}/{filename}', 'r') as f:
                 self.dict_all_pose = json.load(f)
+        if not self.dict_all_pose:
+            print(f'The file marker_pose.log is missing from the directory, run Aruco_pose first')
         
     def get_pose(self):
+        if not self.dict_all_pose:
+            print(f'The file marker_pose.log is missing from the directory, run Aruco_pose first')
+            return
+        
         tags = list(self.dict_all_pose.keys())
         self.nbFrames = max(max(int(key) for key in self.dict_all_pose[tag].keys()) for tag in tags) 
         print(f'nb of frames: {self.nbFrames}')
         
-        for frame in range(self.nbFrames):
+        for frame in range(1, self.nbFrames):
             marker_pose_per_frame = {}
             for tag in tags:
                 frames_dict = self.dict_all_pose[tag]
@@ -78,7 +82,10 @@ class Pose_data():
                 if key in frames_dict:
                     marker_pose_per_frame[tag] = frames_dict[key]
             
-            self.compute_error(marker_pose_per_frame)
+            a = self.compute_error(marker_pose_per_frame)
+            if not a:
+                print(f'frame: {frame}')
+                return
             pose_rot = self.compute_pose(marker_pose_per_frame) 
             if pose_rot:
                 self.edmo_poses[frame] = pose_rot[0]
@@ -98,8 +105,8 @@ class Pose_data():
         # self.vizualize_3D()
          
         print(f' x error: {self.x_avg_error}\n y error: {self.y_avg_error}\n z error: {self.z_avg_error}\n x rotation error: {self.rx_avg_error}\n y rotation error: {self.ry_avg_error}\n z rotation error: {self.rz_avg_error}\n ')
-        print(f' x error: {self.x_avg_error/self.nbFrames}\n y error: {self.y_avg_error/self.nbFrames}\n z error: {self.z_avg_error/self.nbFrames}\n x rotation error: {self.rx_avg_error/self.nbFrames}\n y rotation error: {self.ry_avg_error/self.nbFrames}\n z rotation error: {self.rz_avg_error/self.nbFrames}\n ')
-        
+        print(f'average error over {self.avg_denom} arucos :')
+        print(f' x error: {self.x_avg_error/self.avg_denom} m\n y error: {self.y_avg_error/self.avg_denom} m\n z error: {self.z_avg_error/self.avg_denom} m\n x rotation error: {self.rx_avg_error/self.avg_denom}\n y rotation error: {self.ry_avg_error/self.avg_denom}\n z rotation error: {self.rz_avg_error/self.avg_denom}')
     
     def get_pose_for_frames(self, frame_start, frame_end):
         if frame_start <= 0 or frame_end > self.nbFrames:
@@ -147,21 +154,20 @@ class Pose_data():
     def visualize_time_xy(self, time=False):         
         z = self.t if time else self.z        
 
-        
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
 
         ax.plot(self.x, self.y, z, color='blue', label='position', linewidth=1)
         ax.scatter(self.x[0], self.y[0], z[0], color='red', s=10, label='starting point')
 
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        zlabel = 'Frame number' if time else 'Z'
+        ax.set_xlabel('X (m)')
+        ax.set_ylabel('Y (m)')
+        zlabel = 'Frame number' if time else 'Z (m)'
         ax.set_zlabel(zlabel)
         ax.legend()
 
         plt.show()
-        
+    
         
     def vizualize_3D(self):
         # Define the initial rectangle (relative to the origin)
@@ -263,8 +269,8 @@ class Pose_data():
         zlabel = 'Frame number' if time else 'Z'
         fig.update_layout(
             scene=dict(
-                xaxis_title='X',
-                yaxis_title='Y',
+                xaxis_title='X (m)',
+                yaxis_title='Y (m)',
                 zaxis_title=zlabel
             ),
             title='Interactive 3D Plot',
@@ -280,12 +286,14 @@ class Pose_data():
         for tag in tags:
             if tag in marker_pose_per_frame:
                 corners[int(tag[1])] = marker_pose_per_frame[tag]
-        
+        print(corners)
         for tag1 in corners:
             for tag2 in corners:
                 if tag1 == tag2:
                     continue
                 
+                old_x = self.x_avg_error
+                old_y = self.y_avg_error
                 match (tag1, tag2):
                     case (0, 2) | (4, 3):
                         self.x_avg_error += abs(corners[tag2][0][0] - corners[tag1][0][0]) - x_dist
@@ -303,9 +311,29 @@ class Pose_data():
                 self.rx_avg_error += (corners[tag2][1][0] - corners[tag1][1][0])
                 self.ry_avg_error += (corners[tag2][1][1] - corners[tag1][1][1])
                 self.rz_avg_error += (corners[tag2][1][2] - corners[tag1][1][2])
-                    
-
-
+                self.avg_denom += 1
+                
+                threshold = 1
+                if abs(old_x - self.x_avg_error) > threshold:
+                    print(tag1, tag2)
+                    print(f'x: {abs(old_x - self.x_avg_error)} > {threshold} m ')
+                    if abs(old_y - self.y_avg_error) > threshold:
+                        print(f'y: {abs(old_y - self.y_avg_error) } > {threshold} m ')
+                        if (corners[tag2][0][2] - corners[tag1][0][2]) > threshold:
+                            print(f'z: {(corners[tag2][0][2] - corners[tag1][0][2])} > {threshold} m ')
+                    return False
+                elif abs(old_y - self.y_avg_error) > threshold:
+                    print(tag1, tag2)
+                    print(f'y: {abs(old_y - self.y_avg_error) } > {threshold} m ')
+                    if (corners[tag2][0][2] - corners[tag1][0][2]) > threshold:
+                        print(f'z: {(corners[tag2][0][2] - corners[tag1][0][2])} > {threshold} m ')
+                    return False
+                elif (corners[tag2][0][2] - corners[tag1][0][2]) > threshold:
+                    print(tag1, tag2)
+                    print(f'z: {(corners[tag2][0][2] - corners[tag1][0][2])} > {threshold} m ')
+                    return False
+                else:
+                    return True
     
 if __name__ == '__main__':
     # Example usage : python pose_data.py -v 'Videos(mkv)/GX010412.MP4'
@@ -313,8 +341,11 @@ if __name__ == '__main__':
     ap.add_argument("-p", "--path", default=None, help="Path to the video directory")
     args = vars(ap.parse_args())
     
-    dir = "./Videos(mkv)/"
-    dir = "cleanData/2024.09.23/Snake/15.19.22/"
-    dir = args["path"]
-    pose_data = Pose_data(dir, edmo_type="Snake")
+    path = "./Videos(mkv)/"
+    path = "cleanData/2024.09.23/Snake/15.19.22/"
+    path = "exploreData/Snake/2700-2879/"
+    # path = "./"
+    
+    # path = args["path"]
+    pose_data = Pose_data(path, edmo_type="Snake")
     pose_data.get_pose()

@@ -2,9 +2,9 @@
 Sample Usage:-
 python pose_estimation.py --K_Matrix calibration_matrix.npy --D_Coeff distortion_coefficients.npy --type DICT_5X5_100
 '''
-from sre_compile import dis
 import cv2
 import sys
+# from ArUCo_Markers_Pose.utils import *
 from utils import *
 import argparse
 import os
@@ -30,7 +30,7 @@ class Aruco_pose():
         
         self.k = np.load(f"{aruco_marker_estimation_path}calibration_matrix.npy")
         self.d = np.load(f"{aruco_marker_estimation_path}distortion_coefficients.npy")
-        self.aruco_dict_type = aruco_dict_type
+        self.aruco_dict_type: int = ARUCO_DICT[aruco_dict_type]
         self.show = show
         if video_path[0] != '/':
             video_path = '/' + video_path
@@ -56,7 +56,7 @@ class Aruco_pose():
         self.M_first_aruco_to_cam = np.eye(4)  #                                world frame to the camera frame
 
 
-    def get_aruco_pose(self, frame):
+    def get_aruco_pose(self, frame, origin):
         '''
         frame - Frame from the video stream
         aruco_dict_type - Type of Aruco dictionary used
@@ -67,15 +67,21 @@ class Aruco_pose():
         return: - A dictionary with the valid_tags as keys and its position if detected
         '''
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        aruco_dict = cv2.aruco.getPredefinedDictionary(aruco_dict_type)
+        aruco_dict = cv2.aruco.getPredefinedDictionary(self.aruco_dict_type)
         parameters = cv2.aruco.DetectorParameters()
 
         detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
         corners, ids, rejected_img_points = detector.detectMarkers(gray)
-        # print(ids)
+        
+        if origin not in ids:
+            return None
         pos_dict = {}
         # If markers are detected
         if len(corners) > 0:
+            if self.first_frame and origin in ids:
+                index = np.where(ids==origin)[0][0]
+                corners = [corners[index]] + [c for i, c in enumerate(corners) if i != index]
+                ids = [origin] + [el for el in ids if el != origin]
             for i in range(0, len(ids)):
                 if ids[i] not in self.valid_tags:
                     continue
@@ -96,17 +102,40 @@ class Aruco_pose():
                     M_cam_to_aruco = np.eye(4)
                     M_cam_to_aruco[:3, :3] = R
                     M_cam_to_aruco[:3, 3] = [x, y, z]
-
+                    t_rel = None
+                    rvec_rel = None
                     # Record the positions of the aruco markers with regard to the initial position
                     if self.first_frame:
-                        if ids[i] == 4:
-                            # Record the transformation matrices
-                            self.M_cam_to_first_aruco = M_cam_to_aruco
-                            self.M_first_aruco_to_cam = np.linalg.inv(self.M_cam_to_first_aruco)
-
-                            pos_dict[f'{ids[i]}'] = [np.array([0, 0, 0]).tolist(), np.array([0, 0, 0]).tolist()]
-                            self.first_frame = False
+                        if ids[i] == origin:
+                            print(ids[i])
                         
+                            if 1 - abs(rvec_to_quaternion(rvec)[0]) > 0.1:
+                                return None 
+                            origin_coord = np.array([0, 0, 0]) 
+
+                            match ids[i]:
+                                case 4:
+                                    pass
+                                case 3:
+                                    origin_coord = np.array([1.70, 0, 0]) 
+                                case 2:
+                                    origin_coord = np.array([1.70, -1.10, 0]) 
+                                case 1:
+                                    origin_coord = np.array([0, -1.10, 0]) 
+
+                            self.M_cam_to_first_aruco = M_cam_to_aruco
+                            # print(f'cam to first aruco: \n')
+                            # print(self.M_cam_to_first_aruco)
+                            T_to_true_origin = np.zeros((4,4))
+                            T_to_true_origin[:3, 3] = origin_coord  # shift to the origin
+                            
+                            # Record the transformation matrices
+                            self.M_first_aruco_to_cam = np.linalg.inv(self.M_cam_to_first_aruco) + T_to_true_origin
+                            # print(f'True origin to cam: \n')
+                            # print(self.M_first_aruco_to_cam)
+
+                            pos_dict[f'{ids[i]}'] = [origin_coord.tolist(), np.array([0, 0, 0]).tolist()]
+                            self.first_frame = False
                     else:
                         M_marker_to_first_aruco = np.dot(self.M_first_aruco_to_cam, M_cam_to_aruco)
 
@@ -125,13 +154,19 @@ class Aruco_pose():
                         # Draw axis
                         cv2.drawFrameAxes(frame, self.k, self.d, rvec, tvec, marker_length)
                         a, b, c = rvec.flatten()
+                        if rvec is not None :
+                            print(f'{ids[i]} : quaternions= {rvec_to_quaternion(rvec)} / {t_rel} / {tvec.tolist()}')
+                        
                         if ids[i] == 4:
-                            cv2.putText(frame, f'x: {x:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
-                            cv2.putText(frame, f'y: {y:.2f}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
-                            cv2.putText(frame, f'z: {z:.2f}', (10, 110), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
-                            cv2.putText(frame, f'a: {a:.2f}', (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
-                            cv2.putText(frame, f'b: {b:.2f}', (10, 190), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
-                            cv2.putText(frame, f'c: {c:.2f}', (10, 230), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
+                            if t_rel is None:
+                                pass
+                            else:
+                                cv2.putText(frame, f'x: {t_rel[0]:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
+                                cv2.putText(frame, f'y: {t_rel[1]:.2f}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
+                                cv2.putText(frame, f'z: {t_rel[2]:.2f}', (10, 110), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
+                                cv2.putText(frame, f'a: {rvec_rel[0][0]:.2f}', (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
+                                cv2.putText(frame, f'b: {rvec_rel[1][0]:.2f}', (10, 190), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
+                                cv2.putText(frame, f'c: {rvec_rel[2][0]:.2f}', (10, 230), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
         return pos_dict
 
 
@@ -307,26 +342,40 @@ class Aruco_pose():
                                     cv2.VideoWriter_fourcc(*'MJPG'), 
                                     fps, size) 
 
-        frame_index = 1
+        frame_index = 0
         dict_all_pos = {}
         while True:
             ret, frame = video.read()
             if not ret:
                 break 
+            # if frame_index == 0: # Skip first frame
+            #     frame_index = 1
+                continue
             if not use_video:
                 output_video.write(frame)
             
             # Improve detection by applying smoothing
             # frame = cv2.bilateralFilter(frame, d=9, sigmaColor=75, sigmaSpace=75)
-            output = self.get_aruco_pose(frame)
+            output = None
+            for i in range(4, 0, -1):
+                origin = i if i != 1 else 0
+                output = self.get_aruco_pose(frame, origin=origin)
+                if output is not None:
+                    break
+                
 
-            if show or not use_video:
+            if self.show or not use_video:
                 scaled_frame = cv2.resize(frame, (960, 540))
                 cv2.imshow('Estimated Pose', scaled_frame)
-                key = cv2.waitKey(1) & 0xFF
+                while True:
+                    key = cv2.waitKey(1) & 0xFF
+                    if key == ord('n'):
+                        break  
+                key = cv2.waitKey(10) & 0xFF
                 if key == ord('q'):
                     break
                 
+                                    
             if len(output) > 0:
                 for tag_id, v in output.items():
                     if tag_id not in dict_all_pos:
@@ -354,7 +403,7 @@ if __name__ == '__main__':
     if ARUCO_DICT.get(args["type"], None) is None:
         print(f"ArUCo tag type '{args['type']}' is not supported")
         sys.exit(0)
-    aruco_dict_type = ARUCO_DICT[args["type"]]
+    aruco_dict_type = args["type"]
 
     video_path = args['video']
     # preprocess_video = args['preprocess_video']
