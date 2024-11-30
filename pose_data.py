@@ -54,6 +54,7 @@ class Pose_data():
     
     def __init__(self, dir_path:str, edmo_type:str="Snake"):
         self.edmo_type = edmo_type
+        self.dir_path = dir_path
         for filename in os.listdir(dir_path):
             pattern = r"^marker_pose*\.log$"
             if not re.match(pattern, filename):
@@ -83,9 +84,10 @@ class Pose_data():
                     marker_pose_per_frame[tag] = frames_dict[key]
             
             a = self.compute_error(marker_pose_per_frame)
-            if not a:
-                print(f'frame: {frame}')
-                return
+            if a:
+                print(a)
+                print(f'on frame: {frame}')
+                #  return
             pose_rot = self.compute_pose(marker_pose_per_frame) 
             if pose_rot:
                 self.edmo_poses[frame] = pose_rot[0]
@@ -103,11 +105,11 @@ class Pose_data():
         # self.visualize_time_xy(True)
         # self.interactive_plot()
         # self.vizualize_3D()
-         
-        print(f' x error: {self.x_avg_error}\n y error: {self.y_avg_error}\n z error: {self.z_avg_error}\n x rotation error: {self.rx_avg_error}\n y rotation error: {self.ry_avg_error}\n z rotation error: {self.rz_avg_error}\n ')
-        print(f'average error over {self.avg_denom} arucos :')
-        print(f' x error: {self.x_avg_error/self.avg_denom} m\n y error: {self.y_avg_error/self.avg_denom} m\n z error: {self.z_avg_error/self.avg_denom} m\n x rotation error: {self.rx_avg_error/self.avg_denom}\n y rotation error: {self.ry_avg_error/self.avg_denom}\n z rotation error: {self.rz_avg_error/self.avg_denom}')
-    
+        with open(f"{self.dir_path}/error.log", "w") as f:
+            f.write(f' x error: {self.x_avg_error}\n y error: {self.y_avg_error}\n z error: {self.z_avg_error}\n x rotation error: {self.rx_avg_error}\n y rotation error: {self.ry_avg_error}\n z rotation error: {self.rz_avg_error}\n ')
+            f.write(f'average error over {self.avg_denom} arucos :')
+            f.write(f' x error: {self.x_avg_error/self.avg_denom} m\n y error: {self.y_avg_error/self.avg_denom} m\n z error: {self.z_avg_error/self.avg_denom} m\n x rotation error: {self.rx_avg_error/self.avg_denom}\n y rotation error: {self.ry_avg_error/self.avg_denom}\n z rotation error: {self.rz_avg_error/self.avg_denom}')
+        
     def get_pose_for_frames(self, frame_start, frame_end):
         if frame_start <= 0 or frame_end > self.nbFrames:
             print('Frame arguments for "get_pose_for_frames" are not valid !!')
@@ -286,7 +288,7 @@ class Pose_data():
         for tag in tags:
             if tag in marker_pose_per_frame:
                 corners[int(tag[1])] = marker_pose_per_frame[tag]
-        print(corners)
+        # print(corners)
         for tag1 in corners:
             for tag2 in corners:
                 if tag1 == tag2:
@@ -321,19 +323,20 @@ class Pose_data():
                         print(f'y: {abs(old_y - self.y_avg_error) } > {threshold} m ')
                         if (corners[tag2][0][2] - corners[tag1][0][2]) > threshold:
                             print(f'z: {(corners[tag2][0][2] - corners[tag1][0][2])} > {threshold} m ')
-                    return False
+                    return True
                 elif abs(old_y - self.y_avg_error) > threshold:
                     print(tag1, tag2)
                     print(f'y: {abs(old_y - self.y_avg_error) } > {threshold} m ')
                     if (corners[tag2][0][2] - corners[tag1][0][2]) > threshold:
                         print(f'z: {(corners[tag2][0][2] - corners[tag1][0][2])} > {threshold} m ')
-                    return False
+                    return True
                 elif (corners[tag2][0][2] - corners[tag1][0][2]) > threshold:
                     print(tag1, tag2)
                     print(f'z: {(corners[tag2][0][2] - corners[tag1][0][2])} > {threshold} m ')
-                    return False
-                else:
                     return True
+                else:
+                    return False
+        return False
     
 if __name__ == '__main__':
     # Example usage : python pose_data.py -v 'Videos(mkv)/GX010412.MP4'

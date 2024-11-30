@@ -4,8 +4,8 @@ python pose_estimation.py --K_Matrix calibration_matrix.npy --D_Coeff distortion
 '''
 import cv2
 import sys
-# from ArUCo_Markers_Pose.utils import *
-from utils import *
+from ArUCo_Markers_Pose.utils import *
+# from utils import *
 import argparse
 import os
 import shutil
@@ -348,9 +348,6 @@ class Aruco_pose():
             ret, frame = video.read()
             if not ret:
                 break 
-            # if frame_index == 0: # Skip first frame
-            #     frame_index = 1
-                continue
             if not use_video:
                 output_video.write(frame)
             
@@ -362,7 +359,9 @@ class Aruco_pose():
                 output = self.get_aruco_pose(frame, origin=origin)
                 if output is not None:
                     break
-                
+            if not output:
+                frame_index += 1
+                continue 
 
             if self.show or not use_video:
                 scaled_frame = cv2.resize(frame, (960, 540))
