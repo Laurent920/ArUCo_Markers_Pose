@@ -1,3 +1,6 @@
+This repository is forked from https://github.com/GSNCodes/ArUCo-Markers-Pose-Estimation-Generation-Python 
+refer to that repository for basic functionalities
+
 # ArUCo-Markers-Pose-Estimation-Generation-Python
 
 This repository contains all the code you need to generate an ArucoTag,
@@ -5,8 +8,6 @@ detect ArucoTags in images and videos, and then use the detected tags
 to estimate the pose of the object. In addition to this, I have also 
 included the code required to obtain the calibration matrix for your 
 camera.
-
-<img src = 'Images/pose_output_image.png' width=400 height=400>
 
 ## 1. ArUCo Marker Generation
 The file `generate_aruco_tags.py` contains the code for ArUCo Marker Generation.
@@ -50,22 +51,11 @@ You can find more details on other parameters using `python calibration.py --hel
 
 ## 4. Pose Estimation  
 The file `pose_estimation.py` contains the code that performs pose estimation after detecting the 
-ArUCo markers. This is done in real-time for each frame obtained from the web-cam feed. You need to specify 
-the path to the camera calibration matrix and distortion coefficients obtained from the previous step as well 
-as the type for ArUCo marker you want to detect. Note that this code could be easily modified to perform 
-pose estimation on images and video files.  
-
-The command for running is :-  
-`python pose_estimation.py --K_Matrix calibration_matrix.npy --D_Coeff distortion_coefficients.npy --type DICT_5X5_100`  
-
+ArUCo markers. You need to provide the video 
 
 You can find more details on other parameters using `python pose_estimation.py --help`  
 
-## Output
 
-<img src ='Images/output_sample.png' width = 400>  
-
-<img src ='Images/pose_output.gif'>
 
 ### <ins>Notes</ins>
 The `utils.py` contains the ArUCo Markers dictionary and the other utility function to display the detected markers.
@@ -76,5 +66,7 @@ If you find this repo useful in any way please do star ⭐️ it so that others 
 Happy Learning! Keep chasing your dreams!
 
 ## References
-1. https://docs.opencv.org/4.x/d9/d6d/tutorial_table_of_content_aruco.html
-2. https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html
+1. https://github.com/GSNCodes/ArUCo-Markers-Pose-Estimation-Generation-Python
+2. https://docs.opencv.org/4.x/d9/d6d/tutorial_table_of_content_aruco.html
+3. https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html
+
