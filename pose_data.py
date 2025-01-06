@@ -43,16 +43,8 @@ class Aruco_Const:
     
     
 class Pose_data():
-    dict_all_pose: dict[str, dict[str, list[list, list]]] = None
-    edmo_poses: dict[int, list[int]] = {}
-    edmo_rots: dict[int, list[int]] = {}
-    x, y, z, t = [], [], [], []
-    nbFrames = None
-    x_avg_error, y_avg_error, z_avg_error = 0, 0, 0
-    rx_avg_error, ry_avg_error, rz_avg_error = 0, 0, 0
-    avg_denom = 0
-    
     def __init__(self, dir_path:str, edmo_type:str="Snake"):
+        self.dict_all_pose: dict[str, dict[str, list[list, list]]] = None
         self.edmo_type = edmo_type
         self.dir_path = dir_path
         for filename in os.listdir(dir_path):
@@ -67,6 +59,13 @@ class Pose_data():
         if not self.dict_all_pose:
             print(f'The file marker_pose.log is missing from the directory, run Aruco_pose first')
             return False
+        self.edmo_poses: dict[int, list[int]] = {}
+        self.edmo_rots: dict[int, list[int]] = {}
+        self.x, self.y, self.z, self.t = [], [], [], []
+        self.nbFrames = None
+        self.x_avg_error, self.y_avg_error, self.z_avg_error = 0, 0, 0
+        self.rx_avg_error, self.ry_avg_error, self.rz_avg_error = 0, 0, 0
+        self.avg_denom = 0
         
         tags = list(self.dict_all_pose.keys())
         self.nbFrames = max(max(int(key) for key in self.dict_all_pose[tag].keys()) for tag in tags) 
