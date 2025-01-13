@@ -7,7 +7,7 @@ import json
 from datetime import datetime
 import numpy as np
 
-DEBUG = False
+DEBUG = True
 
 class Aruco_pose():
     keep_mkv = True  
@@ -246,8 +246,11 @@ class Aruco_pose():
         if not use_video:
             output_video.release()
         cv2.destroyAllWindows()
-        f = open(f"{os.path.dirname(self.video_path)}/marker_pose.log", "w")
+        store_path = f"{os.path.dirname(self.video_path)}/marker_pose.log"
+        print(f"Storing at {store_path}")
+        f = open(store_path, "w")
         json.dump(dict_all_pos, f)
+        return dict_all_pos
 
 if __name__ == '__main__':
     # Example usage : 
