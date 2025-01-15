@@ -1,3 +1,4 @@
+from doctest import debug
 import cv2
 import sys
 from ArUCo_Markers_Pose.utils import ARUCO_DICT, rvec_to_quaternion
@@ -7,7 +8,7 @@ import json
 from datetime import datetime
 import numpy as np
 
-DEBUG = True
+DEBUG = False
 
 class Aruco_pose():
     keep_mkv = True  
@@ -67,7 +68,7 @@ class Aruco_pose():
 
         detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
         corners, ids, rejected_img_points = detector.detectMarkers(gray)
-
+        
         if ids is not None and origin not in ids:
             return None
         pos_dict = {}
@@ -79,6 +80,8 @@ class Aruco_pose():
                 ids = [origin] + [el for el in ids if el != origin]
             for i in range(0, len(ids)):
                 if ids[i] not in self.valid_tags:
+                    if DEBUG:
+                        print(ids[i], self.valid_tags)
                     continue
                 marker_length = 0.04
                 if ids[i] == 98:
@@ -103,7 +106,8 @@ class Aruco_pose():
                     if self.first_frame:
                         if ids[i] == origin:
                             if 1 - abs(rvec_to_quaternion(rvec)[0]) > 0.1:
-                                return None 
+                                print(f" quaternions have the wrong values :{rvec_to_quaternion(rvec)}")
+                                # return None 
                             print(f'World coordinate is computed from marker {ids[i]}')
                             origin_coord = np.array([0, 0, 0]) 
 
@@ -211,7 +215,7 @@ class Aruco_pose():
             if not use_video:
                 output_video.write(frame)
             
-            # Improve detection by applying smoothing
+            # Improve detection by applying smoothing but slower
             # frame = cv2.bilateralFilter(frame, d=9, sigmaColor=75, sigmaSpace=75)
             output = None
             for i in range(4, 0, -1):
@@ -219,9 +223,6 @@ class Aruco_pose():
                 output = self.get_aruco_pose(frame, origin=origin)
                 if output is not None:
                     break
-            if not output:
-                frame_index += 1
-                continue 
 
             if self.show or not use_video:
                 scaled_frame = cv2.resize(frame, (960, 540))
@@ -234,7 +235,10 @@ class Aruco_pose():
                 key = cv2.waitKey(10) & 0xFF
                 if key == ord('q'):
                     break
-                
+            
+            if not output:
+                frame_index += 1
+                continue 
                                     
             if len(output) > 0:
                 for tag_id, v in output.items():
@@ -270,4 +274,5 @@ if __name__ == '__main__':
     path = args["path"]
 
     aruco_pose = Aruco_pose(video_path, EDMO_type, show=show, aruco_dict_type=aruco_dict_type,aruco_marker_estimation_path=path)
-    aruco_pose.pose_estimation()
+    dict_all_pose = aruco_pose.pose_estimation()
+    # print(dict_all_pose)

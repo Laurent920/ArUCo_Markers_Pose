@@ -99,11 +99,13 @@ class Pose_data():
                 self.y.append(pose[1])
                 self.z.append(pose[2]) 
                 self.t.append(i)    
-        
         with open(f"{self.dir_path}/error.log", "w") as f:
             f.write(f' x error: {self.x_avg_error}\n y error: {self.y_avg_error}\n z error: {self.z_avg_error}\n x rotation error: {self.rx_avg_error}\n y rotation error: {self.ry_avg_error}\n z rotation error: {self.rz_avg_error}\n ')
             f.write(f'average error over {self.avg_denom} arucos :')
-            f.write(f' x error: {self.x_avg_error/self.avg_denom} m\n y error: {self.y_avg_error/self.avg_denom} m\n z error: {self.z_avg_error/self.avg_denom} m\n x rotation error: {self.rx_avg_error/self.avg_denom}\n y rotation error: {self.ry_avg_error/self.avg_denom}\n z rotation error: {self.rz_avg_error/self.avg_denom}')
+            if self.avg_denom != 0:
+                f.write(f' x error: {self.x_avg_error/self.avg_denom} m\n y error: {self.y_avg_error/self.avg_denom} m\n z error: {self.z_avg_error/self.avg_denom} m\n x rotation error: {self.rx_avg_error/self.avg_denom}\n y rotation error: {self.ry_avg_error/self.avg_denom}\n z rotation error: {self.rz_avg_error/self.avg_denom}')
+            else:
+                print(f"self.avg_denom == 0, no average computation")
         return True
       
          

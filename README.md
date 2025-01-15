@@ -51,10 +51,11 @@ You can find more details on other parameters using `python calibration.py --hel
 
 ## 4. Pose Estimation  
 The file `pose_estimation.py` contains the code that performs pose estimation after detecting the 
-ArUCo markers. You need to provide the video 
+ArUCo markers. You need to provide the video :
 
-You can find more details on other parameters using `python pose_estimation.py --help`  
+`python -m ArUCo_Markers_Pose.pose_estimation --video "./GX011050.MP4" --show True`
 
+You can find more details on other parameters using `python -m ArUCo_Markers_Pose.pose_estimation --help`  
 
 
 ### <ins>Notes</ins>
