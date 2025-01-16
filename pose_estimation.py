@@ -105,9 +105,9 @@ class Aruco_pose():
                     # Record the positions of the aruco markers with regard to the initial position
                     if self.first_frame:
                         if ids[i] == origin:
-                            if 1 - abs(rvec_to_quaternion(rvec)[0]) > 0.1:
-                                print(f" quaternions have the wrong values :{rvec_to_quaternion(rvec)}")
-                                # return None 
+                            if 1 - abs(rvec_to_quaternion(rvec)[0]) > 0.1: # Return None if the orientation of the aruco marker is upside down
+                                print(f" quaternions have the wrong values :{rvec_to_quaternion(rvec)} ==> Make sure the camera is oriented in the same direction as the reference markers")
+                                return None 
                             print(f'World coordinate is computed from marker {ids[i]}')
                             origin_coord = np.array([0, 0, 0]) 
 
