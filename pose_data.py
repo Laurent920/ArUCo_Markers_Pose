@@ -14,12 +14,13 @@ class Aruco_Const:
     mat_width = 110
     mat_length = 170 
     
+    # size of aruco marker and its white border(Not detected if removed)
     border_size = 1.6
     marker_size = 4
+    
     origin_value = (marker_size + border_size)/2 
     x_dist = mat_length-2*origin_value
     y_dist = mat_width-2*origin_value
-
 
     tag_poses:dict[str, tuple] = {}
     tag_poses[4] = (origin_value, origin_value)
@@ -56,12 +57,14 @@ class Pose_data():
                 self.dict_all_pos = json.load(f)
         
     def get_pose(self):
+        print(self.dict_all_pos)
         if self.dict_all_pos is None:
             print(f'The file marker_pose.log is missing from the directory, run Aruco_pose first')
             return False
         if not self.dict_all_pos:
             print('Position dictionary is empty, make sure the aruco markers are captured properly')
             return False
+        
         self.edmo_poses: dict[int, list[int]] = {}
         self.edmo_rots: dict[int, list[int]] = {}
         self.x, self.y, self.z, self.t = [], [], [], []
@@ -69,14 +72,15 @@ class Pose_data():
         self.x_avg_error, self.y_avg_error, self.z_avg_error = 0, 0, 0
         self.rx_avg_error, self.ry_avg_error, self.rz_avg_error = 0, 0, 0
         self.avg_denom = 0
-        
+         
         tags = list(self.dict_all_pos.keys())
         self.nbFrames = max(max(int(key) for key in self.dict_all_pos[tag].keys()) for tag in tags) 
         print(f'nb of frames: {self.nbFrames}')
         
-        for frame in range(1, self.nbFrames):
+        for frame in range(1, self.nbFrames): # Process one frame at a time
             marker_pose_per_frame = {}
-            for tag in tags:
+            # Turn the dict : {tags: {frames: positions}} into {tags: position} 
+            for tag in tags: 
                 frames_dict = self.dict_all_pos[tag]
 
                 key = str(frame)
@@ -86,7 +90,7 @@ class Pose_data():
             a = self.compute_error(marker_pose_per_frame)
             if a:
                 print(f'Too big distance error on frame: {frame}')
-                #  return
+
             pose_rot = self.compute_pose(marker_pose_per_frame) 
             if pose_rot:
                 self.edmo_poses[frame] = pose_rot[0]
@@ -99,6 +103,7 @@ class Pose_data():
                 self.y.append(pose[1])
                 self.z.append(pose[2]) 
                 self.t.append(i)    
+                
         with open(f"{self.dir_path}/error.log", "w") as f:
             f.write(f' x error: {self.x_avg_error}\n y error: {self.y_avg_error}\n z error: {self.z_avg_error}\n x rotation error: {self.rx_avg_error}\n y rotation error: {self.ry_avg_error}\n z rotation error: {self.rz_avg_error}\n ')
             f.write(f'average error over {self.avg_denom} arucos :')
@@ -110,6 +115,7 @@ class Pose_data():
       
          
     def get_pose_for_frames(self, frame_start, frame_end):
+        # Return the position and rotation of a the edmo on a specific frame
         if frame_start <= 0 or frame_end > self.nbFrames:
             print('Frame arguments for "get_pose_for_frames" are not valid !!')
             return None
@@ -139,6 +145,7 @@ class Pose_data():
             
             
     def get_average_pose_rot(self, marker_pose, tags):
+        # Compute the center of mass of the EDMO according to the positions of the tags on the legs
         m1, m2 = tags[0], tags[1]
         if m1 in marker_pose and m2 in marker_pose:
             p1 = marker_pose[m1][0]
@@ -154,12 +161,13 @@ class Pose_data():
         
     def compute_error(self, marker_pose_per_frame):
         tags = ["[0]","[2]","[3]","[4]"]
-        x_dist, y_dist = Aruco_Const.x_dist/100, Aruco_Const.y_dist/100
+        x_dist, y_dist = Aruco_Const.x_dist/100, Aruco_Const.y_dist/100 # distance in meters
         corners = {}
         for tag in tags:
             if tag in marker_pose_per_frame:
                 corners[int(tag[1])] = marker_pose_per_frame[tag]
-        # print(corners)
+
+        # Compute the error on the corner tags
         for tag1 in corners:
             for tag2 in corners:
                 if tag1 == tag2:
@@ -220,12 +228,11 @@ if __name__ == '__main__':
     path = "./Videos(mkv)/"
     path = "cleanData/2024.09.23/Snake/15.19.22/"
     path = "exploreData/Snake/2700-2879/"
-    # path = "./"
+    path = "./"
     
-    
-    
-    path = args["path"]
+    # path = args["path"]
     EDMO_type = args['EDMO_type']
     
     pose_data = Pose_data(path, edmo_type=EDMO_type)
     pose_data.get_pose()
+    print(len(pose_data.x))

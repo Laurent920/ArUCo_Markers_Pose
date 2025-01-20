@@ -21,6 +21,13 @@ class Aruco_pose():
                  show:bool=False,
                  aruco_marker_estimation_path:str="./ArUCo_Markers_Pose/", 
                  aruco_dict_type:str="DICT_4X4_100") -> None:
+        '''
+        video_path                   : Path to the video from the current directory, eg. 'ArUCo_Markers_Pose/Videos/GX010458.MP4'
+        EDMO_type                    : Type of EDMO eg. 'Snake', 'Spider'
+        show                         : Show the frame when processing it
+        aruco_marker_estimation_path : Path to the directory containing this file (must also contain the calibration and distortion files)
+        aruco_dict_type              : Type of Aruco dictionary used (Check the utils.py for all the tag types)
+        '''
         if aruco_marker_estimation_path[-1] != "/":
             aruco_marker_estimation_path += "/"
         
@@ -58,7 +65,7 @@ class Aruco_pose():
         aruco_dict_type - Type of Aruco dictionary used
         matrix_coefficients - Intrinsic matrix of the calibrated camera
         distortion_coefficients - Distortion coefficients associated with your camera
-        valid_tags - The id of the Aruco markers we want to detect
+        valid_tags - The ids of the Aruco markers we want to detect
 
         return: - A dictionary with the valid_tags as keys and its position if detected
         '''
@@ -69,7 +76,7 @@ class Aruco_pose():
         detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
         corners, ids, rejected_img_points = detector.detectMarkers(gray)
         
-        if ids is not None and origin not in ids:
+        if ids is not None and origin not in ids: # If the origin marker is not found return 
             return None
         pos_dict = {}
         # If markers are detected
@@ -104,7 +111,7 @@ class Aruco_pose():
                     rvec_rel = None
                     # Record the positions of the aruco markers with regard to the initial position
                     if self.first_frame:
-                        if ids[i] == origin:
+                        if ids[i] == origin: # Set the origin marker as reference point
                             if 1 - abs(rvec_to_quaternion(rvec)[0]) > 0.1: # Return None if the orientation of the aruco marker is upside down
                                 print(f" quaternions have the wrong values :{rvec_to_quaternion(rvec)} ==> Make sure the camera is oriented in the same direction as the reference markers")
                                 return None 
@@ -175,6 +182,7 @@ class Aruco_pose():
         video = cv2.VideoCapture(self.video_path)
         fps = video.get(cv2.CAP_PROP_FPS)
         print(f'fps: {fps}')
+        
         use_video = self.video_path != self.camera_id
         if use_video:
             if not os.path.exists(self.video_path):
@@ -217,8 +225,9 @@ class Aruco_pose():
             
             # Improve detection by applying smoothing but slower
             # frame = cv2.bilateralFilter(frame, d=9, sigmaColor=75, sigmaSpace=75)
+            
             output = None
-            for i in range(4, 0, -1):
+            for i in range(4, 0, -1): # Check if any of the 4 corners' markers are found, skip the frame if none are found
                 origin = i if i != 1 else 0
                 output = self.get_aruco_pose(frame, origin=origin)
                 if output is not None:
@@ -227,11 +236,13 @@ class Aruco_pose():
             if self.show or not use_video:
                 scaled_frame = cv2.resize(frame, (960, 540))
                 cv2.imshow('Estimated Pose', scaled_frame)
+                
                 # UNCOMMENT TO VIEW FRAME PER FRAME
                 # while True:
                 #     key = cv2.waitKey(1) & 0xFF
                 #     if key == ord('n'):
                 #         break  
+                
                 key = cv2.waitKey(10) & 0xFF
                 if key == ord('q'):
                     break
@@ -246,6 +257,7 @@ class Aruco_pose():
                         dict_all_pos[tag_id] = {}
                     dict_all_pos[tag_id][int(frame_index)] = v
             frame_index += 1
+            
         video.release()
         if not use_video:
             output_video.release()
@@ -261,8 +273,8 @@ if __name__ == '__main__':
     # python -m ArUCo_Markers_Pose.pose_estimation -v 'ArUCo_Markers_Pose/Videos/GX010458.MP4' -s True -edmo 'Snake' -p ./ArUCo_Markers_Pose/
     ap = argparse.ArgumentParser()
     ap.add_argument("-p", "--path", default="ArUCo_Markers_Pose", help="Path to ArUCo_Markers_Pose folder")
-    ap.add_argument("-t", "--type", type=str, default="DICT_4X4_100", help="Type of ArUCo tag to detect")
-    ap.add_argument("-v", "--video", type=str, default=0, help="Path to video or uses laptop camera feed by defaut)")
+    ap.add_argument("-t", "--type", type=str, default="DICT_4X4_100", help="Type of ArUCo tag to detect (check the utils.py for all the tag types)")
+    ap.add_argument("-v", "--video", type=str, default=0, help="Path to video eg.'ArUCo_Markers_Pose/Videos/GX010458.MP4' or uses laptop camera feed by default)")
     ap.add_argument("-edmo", "--EDMO_type", type=str, default='Spider', help="Type of EDMO (Spider, Snake, ...)")
     ap.add_argument("-s", "--show", type=bool, default=False, help="Show output frame")
     args = vars(ap.parse_args())
