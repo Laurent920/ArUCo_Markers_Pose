@@ -45,19 +45,21 @@ class Aruco_Const:
     
 class Pose_data():
     def __init__(self, dir_path:str, edmo_type:str="Snake", dict_all_pos=None):
+        self.loaded_file = False
         self.dict_all_pos: dict[str, dict[str, list[list, list]]] = dict_all_pos
         self.edmo_type = edmo_type
         self.dir_path = dir_path
-        for filename in os.listdir(dir_path):
-            pattern = r"^marker_pose*\.log$"
-            if not re.match(pattern, filename):
-                continue
-            
-            with open(f'{dir_path}/{filename}', 'r') as f:
-                self.dict_all_pos = json.load(f)
+        if dict_all_pos is None:
+            for filename in os.listdir(dir_path):
+                pattern = r"^marker_pose*\.log$"
+                if not re.match(pattern, filename):
+                    continue
+                
+                with open(f'{dir_path}/{filename}', 'r') as f:
+                    self.dict_all_pos = json.load(f)
+                self.loaded_file = True
         
     def get_pose(self):
-        print(self.dict_all_pos)
         if self.dict_all_pos is None:
             print(f'The file marker_pose.log is missing from the directory, run Aruco_pose first')
             return False
@@ -76,14 +78,18 @@ class Pose_data():
         tags = list(self.dict_all_pos.keys())
         self.nbFrames = max(max(int(key) for key in self.dict_all_pos[tag].keys()) for tag in tags) 
         print(f'nb of frames: {self.nbFrames}')
+        # print(f"tags: {tags}")
         
         for frame in range(1, self.nbFrames): # Process one frame at a time
             marker_pose_per_frame = {}
             # Turn the dict : {tags: {frames: positions}} into {tags: position} 
             for tag in tags: 
                 frames_dict = self.dict_all_pos[tag]
+                key = frame
+                if self.loaded_file:
+                    key = str(frame)
+                # print(tag, type(list(frames_dict.keys())[0]), frame, key in frames_dict)
 
-                key = str(frame)
                 if key in frames_dict:
                     marker_pose_per_frame[tag] = frames_dict[key]
             
@@ -103,12 +109,17 @@ class Pose_data():
                 self.y.append(pose[1])
                 self.z.append(pose[2]) 
                 self.t.append(i)    
-                
+        
+        self.x_error, self.y_error, self.z_error = self.x_avg_error, self.y_avg_error, self.z_avg_error
+        self.x_avg_error, self.y_avg_error, self.z_avg_error = self.x_avg_error/self.avg_denom, self.y_avg_error/self.avg_denom, self.z_avg_error/self.avg_denom
+        
+        self.rx_error, self.ry_error, self.rz_error = self.rx_avg_error, self.ry_avg_error, self.rz_avg_error
+        self.rx_avg_error, self.ry_avg_error, self.rz_avg_error = self.rx_avg_error/self.avg_denom, self.ry_avg_error/self.avg_denom, self.rz_avg_error/self.avg_denom
         with open(f"{self.dir_path}/error.log", "w") as f:
-            f.write(f' x error: {self.x_avg_error}\n y error: {self.y_avg_error}\n z error: {self.z_avg_error}\n x rotation error: {self.rx_avg_error}\n y rotation error: {self.ry_avg_error}\n z rotation error: {self.rz_avg_error}\n ')
+            f.write(f' x error: {self.x_error}\n y error: {self.y_error}\n z error: {self.z_error}\n x rotation error: {self.rx_error}\n y rotation error: {self.ry_error}\n z rotation error: {self.rz_error}\n ')
             f.write(f'average error over {self.avg_denom} arucos :')
             if self.avg_denom != 0:
-                f.write(f' x error: {self.x_avg_error/self.avg_denom} m\n y error: {self.y_avg_error/self.avg_denom} m\n z error: {self.z_avg_error/self.avg_denom} m\n x rotation error: {self.rx_avg_error/self.avg_denom}\n y rotation error: {self.ry_avg_error/self.avg_denom}\n z rotation error: {self.rz_avg_error/self.avg_denom}')
+                f.write(f' x error: {self.x_avg_error} m\n y error: {self.y_avg_error} m\n z error: {self.z_avg_error} m\n x rotation error: {self.rx_avg_error}\n y rotation error: {self.ry_avg_error}\n z rotation error: {self.rz_avg_error}')
             else:
                 print(f"self.avg_denom == 0, no average computation")
         return True
@@ -166,7 +177,6 @@ class Pose_data():
         for tag in tags:
             if tag in marker_pose_per_frame:
                 corners[int(tag[1])] = marker_pose_per_frame[tag]
-
         # Compute the error on the corner tags
         for tag1 in corners:
             for tag2 in corners:

@@ -136,7 +136,7 @@ class Aruco_pose():
                             # Record the transformation matrices
                             self.M_first_aruco_to_cam = np.linalg.inv(self.M_cam_to_first_aruco) + T_to_true_origin
                             
-                            pos_dict[f'{ids[i]}'] = [origin_coord.tolist(), np.array([0, 0, 0]).tolist()]
+                            pos_dict[f'[{ids[i]}]'] = [origin_coord.tolist(), np.array([0, 0, 0]).tolist()]
                             self.first_frame = False
                             
                             if DEBUG:
