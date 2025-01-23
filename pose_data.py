@@ -96,6 +96,7 @@ class Pose_data():
             a = self.compute_error(marker_pose_per_frame)
             if a:
                 print(f'Too big distance error on frame: {frame}')
+                continue
 
             pose_rot = self.compute_pose(marker_pose_per_frame) 
             if pose_rot:
