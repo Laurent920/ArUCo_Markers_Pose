@@ -205,7 +205,7 @@ class Pose_data():
                 self.rz_avg_error += (corners[tag2][1][2] - corners[tag1][1][2])
                 self.avg_denom += 1
                 
-                threshold = 1
+                threshold = 0.2
                 if abs(old_x - self.x_avg_error) > threshold:
                     print(tag1, tag2)
                     print(f'x: {abs(old_x - self.x_avg_error)} > {threshold} m ')
