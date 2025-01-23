@@ -31,8 +31,8 @@ class Aruco_pose():
         if aruco_marker_estimation_path[-1] != "/":
             aruco_marker_estimation_path += "/"
         
-        self.k = np.load(f"{aruco_marker_estimation_path}calibration_matrix.npy")
-        self.d = np.load(f"{aruco_marker_estimation_path}distortion_coefficients.npy")
+        self.k = np.load(f"{aruco_marker_estimation_path}/calibration_checkerboard/calibration_matrix_wide.npy")
+        self.d = np.load(f"{aruco_marker_estimation_path}/calibration_checkerboard/distortion_coefficients_wide.npy")
         self.aruco_dict_type: int = ARUCO_DICT[aruco_dict_type]
         self.show = show
         if video_path[0] != '/':

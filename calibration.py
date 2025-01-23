@@ -88,7 +88,7 @@ if __name__ == '__main__':
     ap.add_argument("-uv", "--use_video", help="Use first video file in dir to calibrate the camera (uses every 20 frames)", default=False)
     ap.add_argument("-w", "--width", type=int, help="Width of checkerboard (default=7)",  default=7)
     ap.add_argument("-t", "--height", type=int, help="Height of checkerboard (default=6)", default=6)
-    ap.add_argument("-s", "--square_size", type=float, default=1, help="Length of one edge (in metres)")
+    ap.add_argument("-s", "--square_size", type=float, default=0.03, help="Length of one edge (in metres)")
     ap.add_argument("-v", "--visualize", type=str, default="False", help="To visualize each checkerboard image")
     args = vars(ap.parse_args())
     
@@ -98,10 +98,9 @@ if __name__ == '__main__':
         use_video = True
     else:
         use_video = False
-    # 2.4 cm == 0.024 m
-    # square_size = 0.024
     square_size = args['square_size']
-
+    square_size = 0.03
+    print(square_size)
     # Interior size of the checkerboard 
     width = args['width']
     height = args['height']
