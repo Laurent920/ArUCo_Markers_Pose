@@ -16,7 +16,7 @@ def calculate_reprojection_error(objpoints, imgpoints, rvecs, tvecs, mtx, dist):
     return errors
 
 
-def calibrate(dirpath, square_size, width, height, visualize=False, use_video=None, reprojection_error_threshold=1.0):
+def calibrate(dirpath, square_size, width, height, visualize=False, use_video=None, reprojection_error_threshold=0.1):
     """ Apply camera calibration operation for images in the given directory path. """
 
     # Termination criteria for cornerSubPix
@@ -62,18 +62,20 @@ def calibrate(dirpath, square_size, width, height, visualize=False, use_video=No
                 continue
             skip_frame = True
 
+        # Preprocess the image for better corner detection
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        gray_equalized = clahe.apply(gray)
 
         # Find the chessboard corners
-        ret, corners = cv2.findChessboardCorners(gray, (width, height), None)
+        ret, corners = cv2.findChessboardCorners(gray_equalized, (width, height), None)
         if ret:
-            corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
-            
+            corners2 = cv2.cornerSubPix(gray_equalized, corners, (11, 11), (-1, -1), criteria)
 
             if visualize:
                 cv2.drawChessboardCorners(img, (width, height), corners2, ret)
                 cv2.putText(img, f'frame nb: {i}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
-                cv2.imshow('img', cv2.resize(img, (540, 960)))
+                cv2.imshow('img', cv2.resize(img, (1920, 1080)))
                 while True:
                     key = cv2.waitKey(1) & 0xFF
                     if key != 255:
@@ -84,16 +86,28 @@ def calibrate(dirpath, square_size, width, height, visualize=False, use_video=No
                         else: 
                             break  
             else:
+                # print(objp)
                 objpoints.append(objp)
                 imgpoints.append(corners2)
-        # else:
-        #     print(f"Frame {i}: Chessboard corners not found.")
         
         i += 1
 
-    print(f"number of valid images: {len(imgpoints)}")
-    # Initial calibration
-    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
+    print(f"Number of valid images: {len(imgpoints)}")
+
+    # Initial calibration with additional flags
+    flags = (
+        cv2.CALIB_FIX_ASPECT_RATIO +
+        cv2.CALIB_RATIONAL_MODEL +
+        cv2.CALIB_ZERO_TANGENT_DIST
+        # cv2.CALIB_FIX_K4 + cv2.CALIB_FIX_K5
+    )
+    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None, flags=flags)
+    
+    # if True:
+    #     visualize_chessboard_3d(
+    #         np.array(objpoints), rvecs, tvecs, mtx, dist
+    #     )
+
 
     # Calculate reprojection errors
     reprojection_errors = calculate_reprojection_error(objpoints, imgpoints, rvecs, tvecs, mtx, dist)
@@ -111,12 +125,16 @@ def calibrate(dirpath, square_size, width, height, visualize=False, use_video=No
 
     # Recalibrate using filtered data
     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(
-        filtered_objpoints, filtered_imgpoints, gray.shape[::-1], None, None
+        filtered_objpoints, filtered_imgpoints, gray.shape[::-1], None, None, flags=flags
     )
-
     # Final reprojection errors
     final_reprojection_errors = calculate_reprojection_error(filtered_objpoints, filtered_imgpoints, rvecs, tvecs, mtx, dist)
     print(f"Final mean reprojection error: {np.mean(final_reprojection_errors):.4f}")
+
+
+    if visualize:
+        for i, error in enumerate(final_reprojection_errors):
+            print(f"Frame {i} final reprojection error: {error:.4f}")
 
     return [ret, mtx, dist, rvecs, tvecs]
 
@@ -129,7 +147,7 @@ if __name__ == '__main__':
     ap.add_argument("-t", "--height", type=int, help="Height of checkerboard (default=6)", default=6)
     ap.add_argument("-s", "--square_size", type=float, default=0.03, help="Length of one edge (in meters)")
     ap.add_argument("-v", "--visualize", type=str, default="False", help="To visualize each checkerboard image")
-    ap.add_argument("-th", "--reprojection_error_threshold", type=float, default=1.0, help="Threshold for reprojection error")
+    ap.add_argument("-th", "--reprojection_error_threshold", type=float, default=0.1, help="Threshold for reprojection error")
     args = vars(ap.parse_args())
 
     dirpath = args['dir']
@@ -151,5 +169,5 @@ if __name__ == '__main__':
     print("Distortion Coefficients:")
     print(dist)
 
-    np.save("calibration_matrix", mtx)
-    np.save("distortion_coefficients", dist)
+    np.save(f"{dirpath}/calibration_matrix", mtx)
+    np.save(f"{dirpath}/distortion_coefficients", dist)

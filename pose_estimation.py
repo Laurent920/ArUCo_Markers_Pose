@@ -31,8 +31,8 @@ class Aruco_pose():
         if aruco_marker_estimation_path[-1] != "/":
             aruco_marker_estimation_path += "/"
         
-        self.k = np.load(f"{aruco_marker_estimation_path}/calibration_checkerboard/calibration_matrix_wide.npy")
-        self.d = np.load(f"{aruco_marker_estimation_path}/calibration_checkerboard/distortion_coefficients_wide.npy")
+        self.k = np.load(f"{aruco_marker_estimation_path}/calibration_checkerboard/calibration_matrix.npy")
+        self.d = np.load(f"{aruco_marker_estimation_path}/calibration_checkerboard/distortion_coefficients.npy")
         self.aruco_dict_type: int = ARUCO_DICT[aruco_dict_type]
         self.show = show
         if video_path[0] != '/':
@@ -122,11 +122,11 @@ class Aruco_pose():
                                 case 4:
                                     pass
                                 case 3:
-                                    origin_coord = np.array([1.70, 0, 0]) 
+                                    origin_coord = np.array([1.70-0.056, 0, 0]) 
                                 case 2:
-                                    origin_coord = np.array([1.70, -1.10, 0]) 
+                                    origin_coord = np.array([1.70-0.056, -1.10+0.056, 0]) 
                                 case 1:
-                                    origin_coord = np.array([0, -1.10, 0]) 
+                                    origin_coord = np.array([0, -1.10+0.056, 0]) 
 
                             self.M_cam_to_first_aruco = M_cam_to_aruco
                             
@@ -165,7 +165,7 @@ class Aruco_pose():
                         if DEBUG and rvec is not None:
                             print(f'{ids[i]} : quaternions= {rvec_to_quaternion(rvec)} / {t_rel} / {tvec.tolist()}')
                         
-                        if ids[i] == 4:
+                        if ids[i] == 2:
                             if t_rel is None:
                                 pass
                             else:
@@ -275,7 +275,7 @@ if __name__ == '__main__':
     ap.add_argument("-p", "--path", default="ArUCo_Markers_Pose", help="Path to ArUCo_Markers_Pose folder")
     ap.add_argument("-t", "--type", type=str, default="DICT_4X4_100", help="Type of ArUCo tag to detect (check the utils.py for all the tag types)")
     ap.add_argument("-v", "--video", type=str, default=0, help="Path to video eg.'ArUCo_Markers_Pose/Videos/GX010458.MP4' or uses laptop camera feed by default)")
-    ap.add_argument("-edmo", "--EDMO_type", type=str, default='Spider', help="Type of EDMO (Spider, Snake, ...)")
+    ap.add_argument("-edmo", "--EDMO_type", type=str, default='Snake', help="Type of EDMO (Spider, Snake, ...)")
     ap.add_argument("-s", "--show", type=bool, default=False, help="Show output frame")
     args = vars(ap.parse_args())
 

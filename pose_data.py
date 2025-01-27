@@ -74,6 +74,7 @@ class Pose_data():
         self.x_avg_error, self.y_avg_error, self.z_avg_error = 0, 0, 0
         self.rx_avg_error, self.ry_avg_error, self.rz_avg_error = 0, 0, 0
         self.avg_denom = 0
+        self.edmo_length = []
          
         tags = list(self.dict_all_pos.keys())
         self.nbFrames = max(max(int(key) for key in self.dict_all_pos[tag].keys()) for tag in tags) 
@@ -117,6 +118,7 @@ class Pose_data():
         self.rx_error, self.ry_error, self.rz_error = self.rx_avg_error, self.ry_avg_error, self.rz_avg_error
         self.rx_avg_error, self.ry_avg_error, self.rz_avg_error = self.rx_avg_error/self.avg_denom, self.ry_avg_error/self.avg_denom, self.rz_avg_error/self.avg_denom
         with open(f"{self.dir_path}/error.log", "w") as f:
+            f.write(f'edmo marker dist: {self.edmo_length}')
             f.write(f' x error: {self.x_error}\n y error: {self.y_error}\n z error: {self.z_error}\n x rotation error: {self.rx_error}\n y rotation error: {self.ry_error}\n z rotation error: {self.rz_error}\n ')
             f.write(f'average error over {self.avg_denom} arucos :')
             if self.avg_denom != 0:
@@ -163,6 +165,9 @@ class Pose_data():
             p1 = marker_pose[m1][0]
             p2 = marker_pose[m2][0]
             pose = [(c1+c2)/2 for c1, c2 in zip(p1, p2)]
+            
+            length = sum((c1 - c2) ** 2 for c1, c2 in zip(p1, p2)) ** 0.5
+            self.edmo_length.append(length)
             r1 = marker_pose[m1][1]
             r2 = marker_pose[m2][1]
             rot = [(c1+c2)/2 for c1, c2 in zip(r1, r2)]
@@ -173,6 +178,7 @@ class Pose_data():
         
     def compute_error(self, marker_pose_per_frame):
         tags = ["[0]","[2]","[3]","[4]"]
+        edmo_tags = None
         x_dist, y_dist = Aruco_Const.x_dist/100, Aruco_Const.y_dist/100 # distance in meters
         corners = {}
         for tag in tags:
@@ -188,12 +194,14 @@ class Pose_data():
                 old_y = self.y_avg_error
                 match (tag1, tag2):
                     case (0, 2) | (4, 3):
+                        # print(np.sqrt(((corners[tag2][0][1] - corners[tag1][0][1])**2 + (corners[tag2][0][0] - corners[tag1][0][0])**2)))
                         self.x_avg_error += abs(corners[tag2][0][0] - corners[tag1][0][0]) - x_dist
                         self.y_avg_error += (corners[tag2][0][1] - corners[tag1][0][1])
                     case (0, 3) | (2, 4):
                         self.x_avg_error += abs(corners[tag2][0][0] - corners[tag1][0][0]) - x_dist
                         self.y_avg_error += abs(corners[tag2][0][1] - corners[tag1][0][1]) - y_dist
                     case (4, 0) | (3, 2):
+                        # print(np.sqrt(((corners[tag2][0][1] - corners[tag1][0][1])**2 + (corners[tag2][0][0] - corners[tag1][0][0])**2)))
                         self.x_avg_error += (corners[tag2][0][0] - corners[tag1][0][0])
                         self.y_avg_error += abs(corners[tag2][0][1] - corners[tag1][0][1]) - y_dist
                     case _:
