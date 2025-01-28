@@ -75,7 +75,7 @@ def calibrate(dirpath, square_size, width, height, visualize=False, use_video=No
             if visualize:
                 cv2.drawChessboardCorners(img, (width, height), corners2, ret)
                 cv2.putText(img, f'frame nb: {i}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
-                cv2.imshow('img', cv2.resize(img, (1920, 1080)))
+                cv2.imshow('img', cv2.resize(img, (960, 520)))
                 while True:
                     key = cv2.waitKey(1) & 0xFF
                     if key != 255:
@@ -102,40 +102,38 @@ def calibrate(dirpath, square_size, width, height, visualize=False, use_video=No
         # cv2.CALIB_FIX_K4 + cv2.CALIB_FIX_K5
     )
     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None, flags=flags)
-    
-    # if True:
-    #     visualize_chessboard_3d(
-    #         np.array(objpoints), rvecs, tvecs, mtx, dist
-    #     )
-
 
     # Calculate reprojection errors
     reprojection_errors = calculate_reprojection_error(objpoints, imgpoints, rvecs, tvecs, mtx, dist)
-    print(f"Initial mean reprojection error: {np.mean(reprojection_errors):.4f}")
+    mean_reprojection_error = np.mean(reprojection_errors)
+    print(f"Initial mean reprojection error: {mean_reprojection_error:.4f}")
 
-    # Filter out frames with high reprojection errors
-    filtered_objpoints = []
-    filtered_imgpoints = []
-    for k, error in enumerate(reprojection_errors):
-        if error <= reprojection_error_threshold:
-            filtered_objpoints.append(objpoints[k])
-            filtered_imgpoints.append(imgpoints[k])
+    for _ in range(5):
+        # Filter out frames with high reprojection errors
+        filtered_objpoints = []
+        filtered_imgpoints = []
+        for k, error in enumerate(reprojection_errors):
+            if error <= reprojection_error_threshold:
+                filtered_objpoints.append(objpoints[k])
+                filtered_imgpoints.append(imgpoints[k])
+            else:
+                print(f"Frame {k} discarded due to high reprojection error: {error:.4f}")
+
+        # Recalibrate using filtered data
+        ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(
+            filtered_objpoints, filtered_imgpoints, gray.shape[::-1], None, None, flags=flags
+        )
+        # Final reprojection errors
+        new_reprojection_errors = calculate_reprojection_error(filtered_objpoints, filtered_imgpoints, rvecs, tvecs, mtx, dist)
+        new_mean_reprojection_error = np.mean(new_reprojection_errors)
+        print(f"New mean reprojection error: {new_mean_reprojection_error:.4f}")
+        
+        if new_mean_reprojection_error <= mean_reprojection_error:
+            break
         else:
-            print(f"Frame {k} discarded due to high reprojection error: {error:.4f}")
-
-    # Recalibrate using filtered data
-    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(
-        filtered_objpoints, filtered_imgpoints, gray.shape[::-1], None, None, flags=flags
-    )
-    # Final reprojection errors
-    final_reprojection_errors = calculate_reprojection_error(filtered_objpoints, filtered_imgpoints, rvecs, tvecs, mtx, dist)
-    print(f"Final mean reprojection error: {np.mean(final_reprojection_errors):.4f}")
-
-
-    if visualize:
-        for i, error in enumerate(final_reprojection_errors):
-            print(f"Frame {i} final reprojection error: {error:.4f}")
-
+            mean_reprojection_error = new_mean_reprojection_error
+            reprojection_errors = new_reprojection_errors
+        
     return [ret, mtx, dist, rvecs, tvecs]
 
 

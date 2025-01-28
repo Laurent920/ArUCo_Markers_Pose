@@ -168,7 +168,7 @@ class Aruco_pose():
                         if DEBUG and rvec is not None:
                             print(f'{ids[i]} : quaternions= {rvec_to_quaternion(rvec)} / {t_rel} / {tvec.tolist()}')
                         
-                        if ids[i] == 2:
+                        if ids[i] == 4:
                             if t_rel is None:
                                 pass
                             else:
@@ -178,45 +178,46 @@ class Aruco_pose():
                                 cv2.putText(frame, f'a: {rvec_rel[0][0]:.2f}', (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
                                 cv2.putText(frame, f'b: {rvec_rel[1][0]:.2f}', (10, 190), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
                                 cv2.putText(frame, f'c: {rvec_rel[2][0]:.2f}', (10, 230), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
-            if ids is not None:
-                # Convert ids to a consistent format
-                ids = np.array(ids, dtype=object).flatten()
+            # draw a line between 2 markers for testing purposes
+            # if ids is not None:
+            #     # Convert ids to a consistent format
+            #     ids = np.array(ids, dtype=object).flatten()
                 
-                # Filter out any invalid entries (e.g., nested sequences or non-integer values)
-                valid_ids = [int(id_elem[0]) if isinstance(id_elem, (list, np.ndarray)) and len(id_elem) > 0 else int(id_elem)
-                            for id_elem in ids]
+            #     # Filter out any invalid entries (e.g., nested sequences or non-integer values)
+            #     valid_ids = [int(id_elem[0]) if isinstance(id_elem, (list, np.ndarray)) and len(id_elem) > 0 else int(id_elem)
+            #                 for id_elem in ids]
                 
-                ids = np.array(valid_ids)
+            #     ids = np.array(valid_ids)
 
-                if len(ids) > 0:
-                    if 4 in ids and 3 in ids:
-                        # Find the indices of markers 4 and 3
-                        index_4 = np.where(ids == 4)[0][0]
-                        index_3 = np.where(ids == 3)[0][0]
+            #     if len(ids) > 0:
+            #         if 4 in ids and 3 in ids:
+            #             # Find the indices of markers 4 and 3
+            #             index_4 = np.where(ids == 4)[0][0]
+            #             index_3 = np.where(ids == 3)[0][0]
 
-                        # Compute the center of marker 4
-                        center_4 = (
-                            int(corners[index_4][0][:, 0].mean()),
-                            int(corners[index_4][0][:, 1].mean())
-                        )
-                        # print(center_4)
-                        # Compute the center of marker 3
-                        center_3 = (
-                            int(corners[index_3][0][:, 0].mean()),
-                            int(corners[index_3][0][:, 1].mean())
-                        )
+            #             # Compute the center of marker 4
+            #             center_4 = (
+            #                 int(corners[index_4][0][:, 0].mean()),
+            #                 int(corners[index_4][0][:, 1].mean())
+            #             )
+            #             # print(center_4)
+            #             # Compute the center of marker 3
+            #             center_3 = (
+            #                 int(corners[index_3][0][:, 0].mean()),
+            #                 int(corners[index_3][0][:, 1].mean())
+            #             )
 
-                        # Draw the line between the two markers
-                        cv2.line(frame, center_4, center_3, (0, 255, 0), 2)
-                        # Calculate the Euclidean distance between the two centers
-                        line_length = ((center_4[0] - center_3[0])**2 + (center_4[1] - center_3[1])**2)**0.5
+            #             # Draw the line between the two markers
+            #             cv2.line(frame, center_4, center_3, (0, 255, 0), 2)
+            #             # Calculate the Euclidean distance between the two centers
+            #             line_length = ((center_4[0] - center_3[0])**2 + (center_4[1] - center_3[1])**2)**0.5
 
-                        # Display the length of the line on the frame
-                        mid_point = (
-                            (center_4[0] + center_3[0]) // 2,
-                            (center_4[1] + center_3[1]) // 2
-                        )
-                        cv2.putText(frame, f'{line_length:.2f}', mid_point, cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            #             # Display the length of the line on the frame
+            #             mid_point = (
+            #                 (center_4[0] + center_3[0]) // 2,
+            #                 (center_4[1] + center_3[1]) // 2
+            #             )
+            #             cv2.putText(frame, f'{line_length:.2f}', mid_point, cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
 
         return pos_dict
 
@@ -281,10 +282,10 @@ class Aruco_pose():
                 cv2.imshow('Estimated Pose', scaled_frame)
                 
                 # UNCOMMENT TO VIEW FRAME PER FRAME
-                # while True:
-                #     key = cv2.waitKey(1) & 0xFF
-                #     if key == ord('n'):
-                #         break  
+                while True:
+                    key = cv2.waitKey(1) & 0xFF
+                    if key == ord('n'):
+                        break  
                 
                 key = cv2.waitKey(10) & 0xFF
                 if key == ord('q'):
