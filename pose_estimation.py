@@ -85,6 +85,15 @@ class Aruco_pose():
                 index = np.where(ids==origin)[0][0]
                 corners = [corners[index]] + [c for i, c in enumerate(corners) if i != index]
                 ids = [origin] + [el for el in ids if el != origin]
+                
+            # Undistort the detected corners
+            undistorted_corners = []
+            for corner in corners:
+                undistorted = cv2.undistortPoints(
+                    np.array(corner, dtype=np.float32), self.k, self.d, None, self.k
+                )
+                undistorted_corners.append(undistorted)
+                
             for i in range(0, len(ids)):
                 if ids[i] not in self.valid_tags:
                     if DEBUG:
@@ -98,8 +107,10 @@ class Aruco_pose():
                                         [marker_length / 2, -marker_length / 2, 0],
                                         [-marker_length / 2, -marker_length / 2, 0]])
 
-                ret, rvec, tvec = cv2.solvePnP(object_points, corners[i], self.k, self.d)
+                ret, rvec, tvec = cv2.solvePnP(object_points, undistorted_corners[i], self.k, None)
                 if ret:
+                    # if ids[i] == 4:
+                    #     print(tvec)
                     x, y, z = tvec.flatten()
                     # Convert rvec to a rotation matrix
                     R, _ = cv2.Rodrigues(rvec)
@@ -175,6 +186,46 @@ class Aruco_pose():
                                 cv2.putText(frame, f'a: {rvec_rel[0][0]:.2f}', (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
                                 cv2.putText(frame, f'b: {rvec_rel[1][0]:.2f}', (10, 190), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
                                 cv2.putText(frame, f'c: {rvec_rel[2][0]:.2f}', (10, 230), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
+            if ids is not None:
+                # Convert ids to a consistent format
+                ids = np.array(ids, dtype=object).flatten()
+                
+                # Filter out any invalid entries (e.g., nested sequences or non-integer values)
+                valid_ids = [int(id_elem[0]) if isinstance(id_elem, (list, np.ndarray)) and len(id_elem) > 0 else int(id_elem)
+                            for id_elem in ids]
+                
+                ids = np.array(valid_ids)
+
+                if len(ids) > 0:
+                    if 4 in ids and 3 in ids:
+                        # Find the indices of markers 4 and 3
+                        index_4 = np.where(ids == 4)[0][0]
+                        index_3 = np.where(ids == 3)[0][0]
+
+                        # Compute the center of marker 4
+                        center_4 = (
+                            int(corners[index_4][0][:, 0].mean()),
+                            int(corners[index_4][0][:, 1].mean())
+                        )
+                        # print(center_4)
+                        # Compute the center of marker 3
+                        center_3 = (
+                            int(corners[index_3][0][:, 0].mean()),
+                            int(corners[index_3][0][:, 1].mean())
+                        )
+
+                        # Draw the line between the two markers
+                        cv2.line(frame, center_4, center_3, (0, 255, 0), 2)
+                        # Calculate the Euclidean distance between the two centers
+                        line_length = ((center_4[0] - center_3[0])**2 + (center_4[1] - center_3[1])**2)**0.5
+
+                        # Display the length of the line on the frame
+                        mid_point = (
+                            (center_4[0] + center_3[0]) // 2,
+                            (center_4[1] + center_3[1]) // 2
+                        )
+                        cv2.putText(frame, f'{line_length:.2f}', mid_point, cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+
         return pos_dict
 
 
