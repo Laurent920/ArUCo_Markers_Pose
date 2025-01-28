@@ -86,14 +86,6 @@ class Aruco_pose():
                 corners = [corners[index]] + [c for i, c in enumerate(corners) if i != index]
                 ids = [origin] + [el for el in ids if el != origin]
                 
-            # Undistort the detected corners
-            undistorted_corners = []
-            for corner in corners:
-                undistorted = cv2.undistortPoints(
-                    np.array(corner, dtype=np.float32), self.k, self.d, None, self.k
-                )
-                undistorted_corners.append(undistorted)
-                
             for i in range(0, len(ids)):
                 if ids[i] not in self.valid_tags:
                     if DEBUG:
@@ -107,7 +99,7 @@ class Aruco_pose():
                                         [marker_length / 2, -marker_length / 2, 0],
                                         [-marker_length / 2, -marker_length / 2, 0]])
 
-                ret, rvec, tvec = cv2.solvePnP(object_points, undistorted_corners[i], self.k, None)
+                ret, rvec, tvec = cv2.solvePnP(object_points, corners[i], self.k, self.d)
                 if ret:
                     # if ids[i] == 4:
                     #     print(tvec)
