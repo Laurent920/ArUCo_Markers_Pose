@@ -143,10 +143,12 @@ class Pose_data():
     
     
     def compute_pose(self, marker_pose_per_frame):
+        #TODO Logic for estimating the position of new EDMO configurations need to be implemented here
         if self.edmo_type == "Snake":
             tags = ("[1]", "[47]")
             return self.get_average_pose_rot(marker_pose_per_frame, tags)
-        elif self.edmo_type == "Spider":
+        elif self.edmo_type == "Spider": 
+            # The Spider position computation is experimental and not tested
             tags = (("[1]", "[47]"), ("[5]", "[24]"))
             middle_pose = marker_pose_per_frame["[98]"] if "[98]" in marker_pose_per_frame else [[0,0,0], [0,0,0]]
             for tag_comb in tags:
@@ -213,7 +215,7 @@ class Pose_data():
                 self.rz_avg_error += (corners[tag2][1][2] - corners[tag1][1][2])
                 self.avg_denom += 1
                 
-                threshold = 0.2
+                threshold = 1
                 if abs(old_x - self.x_avg_error) > threshold:
                     print(tag1, tag2)
                     print(f'x: {abs(old_x - self.x_avg_error)} > {threshold} m ')
@@ -238,7 +240,7 @@ class Pose_data():
         
          
 if __name__ == '__main__':
-    # Example usage : python pose_data.py -v 'Videos/'
+    # Example usage : python -m ArUCo_Markers_Pose.pose_data --path "ArUCo_Markers_Pose/Videos/"'
     ap = argparse.ArgumentParser()
     ap.add_argument("-p", "--path", default=None, help="Path to the directory that contains the marker_pose.log file")
     ap.add_argument("-edmo", "--EDMO_type", default='Snake', help="Type of EDMO (Spider, Snake, ...)")
@@ -255,3 +257,4 @@ if __name__ == '__main__':
     pose_data = Pose_data(path, edmo_type=EDMO_type)
     pose_data.get_pose()
     print(len(pose_data.x))
+    print(len(pose_data.y))

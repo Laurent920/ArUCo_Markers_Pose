@@ -143,7 +143,7 @@ if __name__ == '__main__':
     ap.add_argument("-uv", "--use_video", help="Video file in dir to use to calibrate the camera (uses every 20 frames)", default=None)
     ap.add_argument("-w", "--width", type=int, help="Width of checkerboard (default=7)", default=7)
     ap.add_argument("-t", "--height", type=int, help="Height of checkerboard (default=6)", default=6)
-    ap.add_argument("-s", "--square_size", type=float, default=0.03, help="Length of one edge (in meters)")
+    ap.add_argument("-s", "--square_size", type=float, default=0.03, help="Length of one edge (default 0.03 meters)")
     ap.add_argument("-v", "--visualize", type=str, default="False", help="To visualize each checkerboard image")
     ap.add_argument("-th", "--reprojection_error_threshold", type=float, default=0.1, help="Threshold for reprojection error")
     args = vars(ap.parse_args())

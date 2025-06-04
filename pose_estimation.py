@@ -282,10 +282,10 @@ class Aruco_pose():
                 cv2.imshow('Estimated Pose', scaled_frame)
                 
                 # UNCOMMENT TO VIEW FRAME PER FRAME
-                while True:
-                    key = cv2.waitKey(1) & 0xFF
-                    if key == ord('n'):
-                        break  
+                # while True:
+                #     key = cv2.waitKey(1) & 0xFF
+                #     if key == ord('n'):
+                #         break  
                 
                 key = cv2.waitKey(10) & 0xFF
                 if key == ord('q'):
@@ -314,7 +314,7 @@ class Aruco_pose():
 
 if __name__ == '__main__':
     # Example usage : 
-    # python -m ArUCo_Markers_Pose.pose_estimation -v 'ArUCo_Markers_Pose/Videos/GX010458.MP4' -s True -edmo 'Snake' -p ./ArUCo_Markers_Pose/
+    # python -m ArUCo_Markers_Pose.pose_estimation -v 'ArUCo_Markers_Pose/Videos/test_video.MP4' -s True -edmo 'Snake' -p ./ArUCo_Markers_Pose/
     ap = argparse.ArgumentParser()
     ap.add_argument("-p", "--path", default="ArUCo_Markers_Pose", help="Path to ArUCo_Markers_Pose folder")
     ap.add_argument("-t", "--type", type=str, default="DICT_4X4_100", help="Type of ArUCo tag to detect (check the utils.py for all the tag types)")
