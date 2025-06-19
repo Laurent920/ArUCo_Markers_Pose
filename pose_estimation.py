@@ -58,6 +58,18 @@ class Aruco_pose():
         self.M_cam_to_first_aruco = np.eye(4)  # Transformation matrix from the camera frame to the world frame (= position of the marker on the first video frame)
         self.M_first_aruco_to_cam = np.eye(4)  #                                world frame to the camera frame
 
+    def get_reference_position(self, tag_id): 
+        # Coordinate system: position of the reference marker in the world frame
+        match tag_id:
+            case 4:
+                origin_coord = np.array([0, 0, 0]) # origin of the world frame
+            case 3:
+                origin_coord = np.array([1.70-0.056, 0, 0]) 
+            case 2:
+                origin_coord = np.array([1.70-0.056, -1.10+0.056, 0]) 
+            case 1:
+                origin_coord = np.array([0, -1.10+0.056, 0]) 
+        return origin_coord
 
     def get_aruco_pose(self, frame, origin):
         '''
@@ -116,20 +128,12 @@ class Aruco_pose():
                     if self.first_frame:
                         if ids[i] == origin: # Set the origin marker as reference point
                             if 1 - abs(rvec_to_quaternion(rvec)[0]) > 0.1: # Return None if the orientation of the aruco marker is upside down
+                                # This condition can be different for your use case
                                 print(f" quaternions have the wrong values :{rvec_to_quaternion(rvec)} ==> Make sure the camera is oriented in the same direction as the reference markers")
                                 return None 
                             print(f'World coordinate is computed from marker {ids[i]}')
-                            origin_coord = np.array([0, 0, 0]) 
-
-                            match ids[i]:
-                                case 4:
-                                    pass
-                                case 3:
-                                    origin_coord = np.array([1.70-0.056, 0, 0]) 
-                                case 2:
-                                    origin_coord = np.array([1.70-0.056, -1.10+0.056, 0]) 
-                                case 1:
-                                    origin_coord = np.array([0, -1.10+0.056, 0]) 
+                            
+                            origin_coord = self.get_reference_position(ids[i]) 
 
                             self.M_cam_to_first_aruco = M_cam_to_aruco
                             

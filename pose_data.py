@@ -51,6 +51,7 @@ class Pose_data():
         self.dir_path = dir_path
         if dict_all_pos is None:
             for filename in os.listdir(dir_path):
+                print(filename)
                 pattern = r"^marker_pose*\.log$"
                 if not re.match(pattern, filename):
                     continue
@@ -246,15 +247,11 @@ if __name__ == '__main__':
     ap.add_argument("-edmo", "--EDMO_type", default='Snake', help="Type of EDMO (Spider, Snake, ...)")
     args = vars(ap.parse_args())
     
-    path = "./Videos(mkv)/"
-    path = "cleanData/2024.09.23/Snake/15.19.22/"
-    path = "exploreData/Snake/2700-2879/"
-    path = "./"
-    
-    # path = args["path"]
+    path = args["path"]
     EDMO_type = args['EDMO_type']
     
     pose_data = Pose_data(path, edmo_type=EDMO_type)
     pose_data.get_pose()
-    print(len(pose_data.x))
-    print(len(pose_data.y))
+    if hasattr(pose_data, 'x'):
+        print(f"Number of x position: {len(pose_data.x)}")
+        print(f"Number of y position: {len(pose_data.y)}")
